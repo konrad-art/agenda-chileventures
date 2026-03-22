@@ -3,16 +3,31 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { Config, EventType, Booking, TimeSlot } from '@/lib/types'
-import { DAYS_ES, MONTHS_ES, generateTimeSlots, isSameDay, isSlotBooked, isDateAvailable, getCalendarDays } from '@/lib/helpers'
+import { DAYS_ES, MONTHS_ES, generateTimeSlots, isSameDay, isDateAvailable, getCalendarDays } from '@/lib/helpers'
+
+interface BusySlot {
+  start: string
+  end: string
+}
+
+function isSlotBusy(busySlots: BusySlot[], date: Date, slot: TimeSlot, duration: number): boolean {
+  const slotStart = new Date(date)
+  slotStart.setHours(slot.hour, slot.minute, 0, 0)
+  const slotEnd = new Date(slotStart.getTime() + duration * 60000)
+  return busySlots.some((b) => {
+    const bStart = new Date(b.start)
+    const bEnd = new Date(b.end)
+    return slotStart < bEnd && slotEnd > bStart
+  })
+}
 
 interface Props {
-  filterType?: string // If set, only show this event type (direct link mode)
+  filterType?: string
 }
 
 export default function BookingPage({ filterType }: Props) {
   const [config, setConfig] = useState<Config | null>(null)
   const [eventTypes, setEventTypes] = useState<EventType[]>([])
-  const [bookings, setBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(true)
 
   const [selectedType, setSelectedType] = useState<EventType | null>(null)
@@ -26,18 +41,19 @@ export default function BookingPage({ filterType }: Props) {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
 
+  const [busySlots, setBusySlots] = useState<BusySlot[]>([])
+  const [loadingSlots, setLoadingSlots] = useState(false)
+
   // Load data from Supabase
   useEffect(() => {
     async function load() {
-      const [configRes, typesRes, bookingsRes] = await Promise.all([
+      const [configRes, typesRes] = await Promise.all([
         supabase.from('config').select('*').single(),
         supabase.from('event_types').select('*').order('sort_order'),
-        supabase.from('bookings').select('*').eq('status', 'confirmed').gte('datetime', new Date().toISOString()),
       ])
       if (configRes.data) setConfig(configRes.data)
       if (typesRes.data) {
         setEventTypes(typesRes.data)
-        // If direct link mode, auto-select the type
         if (filterType) {
           const match = typesRes.data.find((t: EventType) => t.id === filterType)
           if (match) {
@@ -46,11 +62,35 @@ export default function BookingPage({ filterType }: Props) {
           }
         }
       }
-      if (bookingsRes.data) setBookings(bookingsRes.data)
       setLoading(false)
     }
     load()
   }, [filterType])
+
+  // Fetch busy slots when date changes
+  useEffect(() => {
+    if (!selectedDate || !config) return
+    async function fetchAvailability() {
+      setLoadingSlots(true)
+      setBusySlots([])
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/availability`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ date: selectedDate.toISOString() }),
+          }
+        )
+        const data = await res.json()
+        if (data.busy) setBusySlots(data.busy)
+      } catch {
+        console.error('Error fetching availability')
+      }
+      setLoadingSlots(false)
+    }
+    fetchAvailability()
+  }, [selectedDate, config])
 
   const isFormValid = () => {
     if (!formData.name || !formData.email) return false
@@ -105,6 +145,7 @@ export default function BookingPage({ filterType }: Props) {
     setFormData({ name: '', email: '', notes: '' })
     setExtraData({})
     setError('')
+    setBusySlots([])
     if (filterType && selectedType) {
       setStep('date')
     } else {
@@ -116,7 +157,7 @@ export default function BookingPage({ filterType }: Props) {
   const goBack = () => {
     setError('')
     if (step === 'form') { setStep('date'); setSelectedSlot(null) }
-    else if (step === 'date' && !filterType) { setStep('type'); setSelectedType(null); setSelectedDate(null) }
+    else if (step === 'date' && !filterType) { setStep('type'); setSelectedType(null); setSelectedDate(null); setBusySlots([]) }
   }
 
   if (loading || !config) {
@@ -174,6 +215,8 @@ export default function BookingPage({ filterType }: Props) {
                     setStep('date')
                     setSelectedSlot(null)
                     setExtraData({})
+                    setBusySlots([])
+                    setSelectedDate(null)
                   }}
                 >
                   <div className={`text-2xl w-11 h-11 flex items-center justify-center rounded-[10px] ${selectedType?.id === et.id ? 'bg-[rgba(194,91,63,0.12)]' : 'bg-[var(--surface-alt)]'}`}>
@@ -252,22 +295,32 @@ export default function BookingPage({ filterType }: Props) {
                       <div className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--text-tertiary)' }}>
                         {DAYS_ES[selectedDate.getDay()]} {selectedDate.getDate()} de {MONTHS_ES[selectedDate.getMonth()]}
                       </div>
-                      {slots.length === 0 ? (
+
+                      {loadingSlots ? (
+                        <div className="text-center py-8 text-sm" style={{ color: 'var(--text-tertiary)' }}>
+                          Consultando disponibilidad...
+                        </div>
+                      ) : slots.length === 0 ? (
                         <div className="text-center py-8 text-sm" style={{ color: 'var(--text-tertiary)' }}>No hay horarios disponibles este día</div>
                       ) : (
                         <div className="grid grid-cols-3 gap-2 max-h-[280px] overflow-y-auto slots-scroll pr-1">
                           {slots.map((slot, i) => {
-                            const booked = isSlotBooked(bookings, selectedDate, slot, selectedType.duration)
+                            const busy = isSlotBusy(busySlots, selectedDate, slot, selectedType.duration)
                             const isSel = selectedSlot?.label === slot.label
+                            if (busy) return null
                             return (
                               <button key={i}
                                 className={`slot-btn ${isSel ? 'selected' : ''}`}
-                                disabled={booked}
                                 onClick={() => { setSelectedSlot(slot); setStep('form') }}>
                                 {slot.label}
                               </button>
                             )
                           })}
+                          {slots.every((slot) => isSlotBusy(busySlots, selectedDate, slot, selectedType.duration)) && (
+                            <div className="col-span-3 text-center py-8 text-sm" style={{ color: 'var(--text-tertiary)' }}>
+                              No hay horarios disponibles este día
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
