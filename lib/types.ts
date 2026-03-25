@@ -9,20 +9,20 @@ export interface Config {
   end_hour: number
   buffer_minutes: number
   max_days_ahead: number
-  google_calendar_token: any
-  google_calendar_id: string
-  notification_email: string
+  google_calendar_token?: any
+  google_calendar_id?: string
+  notification_email?: string
 }
 
 export interface EventType {
   id: string
   name: string
   duration: number
-  color: string
+  color?: string
   emoji: string
   description: string
   extra_fields: ExtraField[]
-  is_active: boolean
+  is_active?: boolean
   sort_order: number
 }
 
