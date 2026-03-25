@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { Config, EventType, Booking, TimeSlot } from '@/lib/types'
 import { DAYS_ES, MONTHS_ES, generateTimeSlots, isSameDay, isDateAvailable, getCalendarDays } from '@/lib/helpers'
+import { CVLogoFull, CVMark } from '@/components/CVLogo'
 
 interface BusySlot {
   start: string
@@ -174,14 +175,10 @@ export default function BookingPage({ filterType }: Props) {
     <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
       {/* Top Bar */}
       <div className="sticky top-0 z-50 flex items-center justify-between px-8 py-4 border-b" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-[10px] flex items-center justify-center text-white font-display font-bold text-lg" style={{ background: 'var(--accent)' }}>
-            {config.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
-          </div>
-          <div>
-            <div className="font-display font-semibold text-lg" style={{ letterSpacing: '-0.3px' }}>Agenda</div>
-            <div className="text-xs uppercase tracking-wider" style={{ color: 'var(--text-tertiary)' }}>by {config.name}</div>
-          </div>
+        <div className="flex items-center gap-4">
+          <CVLogoFull height={18} dark={true} />
+          <div className="h-5 w-px" style={{ background: 'var(--border-strong)' }} />
+          <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--text-tertiary)' }}>Agenda</div>
         </div>
       </div>
 
@@ -191,12 +188,11 @@ export default function BookingPage({ filterType }: Props) {
 
           {/* Sidebar */}
           <div className="p-8 border-r flex flex-col gap-6" style={{ borderColor: 'var(--border)' }}>
-            <div className="w-14 h-14 rounded-full flex items-center justify-center text-white font-display text-xl font-bold" style={{ background: `linear-gradient(135deg, var(--accent), var(--accent-dark))` }}>
-              {config.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
-            </div>
+            <CVMark size={52} />
             <div>
-              <div className="font-display text-xl font-semibold" style={{ letterSpacing: '-0.3px' }}>{config.name}</div>
-              <div className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>{config.title} @ {config.org}</div>
+              <div className="font-bold text-[17px]" style={{ letterSpacing: '-0.2px' }}>{config.name}</div>
+              <div className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>{config.title}</div>
+              <div className="text-xs mt-0.5 font-semibold uppercase tracking-wider" style={{ color: 'var(--accent)' }}>{config.org}</div>
             </div>
 
             <div className="h-px" style={{ background: 'var(--border)' }} />
@@ -219,7 +215,7 @@ export default function BookingPage({ filterType }: Props) {
                     setSelectedDate(null)
                   }}
                 >
-                  <div className={`text-2xl w-11 h-11 flex items-center justify-center rounded-[10px] ${selectedType?.id === et.id ? 'bg-[rgba(194,91,63,0.12)]' : 'bg-[var(--surface-alt)]'}`}>
+                  <div className={`text-2xl w-11 h-11 flex items-center justify-center rounded-[10px] ${selectedType?.id === et.id ? 'bg-[rgba(45,140,194,0.12)]' : 'bg-[var(--surface-alt)]'}`}>
                     {et.emoji}
                   </div>
                   <div>
@@ -400,7 +396,7 @@ export default function BookingPage({ filterType }: Props) {
             {/* Step: Success */}
             {step === 'success' && selectedType && selectedDate && selectedSlot && (
               <div className="animate-slide-up text-center py-16">
-                <div className="w-[72px] h-[72px] rounded-full flex items-center justify-center text-3xl mx-auto mb-6" style={{ background: 'var(--success-light)' }}>✓</div>
+                <div className="w-[72px] h-[72px] rounded-full flex items-center justify-center text-3xl mx-auto mb-6 font-bold" style={{ background: 'var(--success-light)', color: 'var(--success)', fontSize: '28px' }}>✓</div>
                 <div className="font-display text-2xl font-semibold mb-2">¡Reunión agendada!</div>
                 <div className="text-sm max-w-[360px] mx-auto" style={{ color: 'var(--text-secondary)', lineHeight: 1.6 }}>
                   Tu reunión con {config.name} ha sido confirmada.
