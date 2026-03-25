@@ -79,7 +79,7 @@ export default function BookingPage({ filterType }: Props) {
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ date: selectedDate.toISOString() }),
+            body: JSON.stringify({ date: selectedDate!.toISOString() }),
           }
         )
         const data = await res.json()
