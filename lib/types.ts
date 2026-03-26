@@ -45,6 +45,7 @@ export interface Booking {
   extras: Record<string, string>
   status: string
   google_event_id: string | null
+  reschedule_token?: string
   created_at: string
   event_types?: EventType
 }

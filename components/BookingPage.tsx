@@ -24,9 +24,10 @@ function isSlotBusy(busySlots: BusySlot[], date: Date, slot: TimeSlot, duration:
 
 interface Props {
   filterType?: string
+  rescheduleToken?: string
 }
 
-export default function BookingPage({ filterType }: Props) {
+export default function BookingPage({ filterType, rescheduleToken }: Props) {
   const [config, setConfig] = useState<Config | null>(null)
   const [eventTypes, setEventTypes] = useState<EventType[]>([])
   const [loading, setLoading] = useState(true)
@@ -44,6 +45,10 @@ export default function BookingPage({ filterType }: Props) {
 
   const [busySlots, setBusySlots] = useState<BusySlot[]>([])
   const [loadingSlots, setLoadingSlots] = useState(false)
+  const [rescheduleData, setRescheduleData] = useState<any>(null)
+  const [rescheduleError, setRescheduleError] = useState('')
+
+  const isReschedule = !!rescheduleToken
 
   // Load data from Supabase
   useEffect(() => {
@@ -67,6 +72,35 @@ export default function BookingPage({ filterType }: Props) {
     }
     load()
   }, [filterType])
+
+  // Load reschedule booking data
+  useEffect(() => {
+    if (!rescheduleToken || eventTypes.length === 0) return
+    async function loadReschedule() {
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/reschedule?token=${rescheduleToken}`
+        )
+        const data = await res.json()
+        if (!res.ok || data.error) {
+          setRescheduleError(data.error || 'Enlace inválido')
+          setLoading(false)
+          return
+        }
+        setRescheduleData(data.booking)
+        const match = eventTypes.find((t: EventType) => t.id === data.booking.event_type_id)
+        if (match) {
+          setSelectedType(match)
+          setFormData({ name: data.booking.name, email: data.booking.email, notes: data.booking.notes || '' })
+          setExtraData(data.booking.extras || {})
+          setStep('date')
+        }
+      } catch {
+        setRescheduleError('Error al cargar los datos de la reunión')
+      }
+    }
+    loadReschedule()
+  }, [rescheduleToken, eventTypes])
 
   // Fetch busy slots when date changes
   useEffect(() => {
@@ -112,26 +146,48 @@ export default function BookingPage({ filterType }: Props) {
     dt.setHours(selectedSlot.hour, selectedSlot.minute, 0, 0)
 
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/book`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            event_type_id: selectedType.id,
-            datetime: dt.toISOString(),
-            name: formData.name,
-            email: formData.email,
-            notes: formData.notes,
-            extras: extraData,
-          }),
+      if (isReschedule) {
+        // Reschedule: POST to reschedule endpoint
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/reschedule`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              token: rescheduleToken,
+              new_datetime: dt.toISOString(),
+            }),
+          }
+        )
+        const data = await res.json()
+        if (!res.ok) {
+          setError(data.error || 'Error al reagendar')
+          setSubmitting(false)
+          return
         }
-      )
-      const data = await res.json()
-      if (!res.ok) {
-        setError(data.error || 'Error al agendar')
-        setSubmitting(false)
-        return
+      } else {
+        // New booking: POST to book endpoint
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/book`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              event_type_id: selectedType.id,
+              datetime: dt.toISOString(),
+              name: formData.name,
+              email: formData.email,
+              notes: formData.notes,
+              extras: extraData,
+            }),
+          }
+        )
+        const data = await res.json()
+        if (!res.ok) {
+          setError(data.error || 'Error al agendar')
+          setSubmitting(false)
+          return
+        }
       }
       setStep('success')
     } catch {
@@ -158,7 +214,19 @@ export default function BookingPage({ filterType }: Props) {
   const goBack = () => {
     setError('')
     if (step === 'form') { setStep('date'); setSelectedSlot(null) }
-    else if (step === 'date' && !filterType) { setStep('type'); setSelectedType(null); setSelectedDate(null); setBusySlots([]) }
+    else if (step === 'date' && !filterType && !isReschedule) { setStep('type'); setSelectedType(null); setSelectedDate(null); setBusySlots([]) }
+  }
+
+  if (rescheduleError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg)' }}>
+        <div className="text-center">
+          <div className="text-5xl mb-4">⚠️</div>
+          <div className="font-display text-xl font-semibold mb-2">Enlace no válido</div>
+          <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>{rescheduleError}</div>
+        </div>
+      </div>
+    )
   }
 
   if (loading || !config) {
@@ -197,16 +265,23 @@ export default function BookingPage({ filterType }: Props) {
 
             <div className="h-px" style={{ background: 'var(--border)' }} />
 
+            {isReschedule && (
+              <div className="px-4 py-3 rounded-[10px] text-sm font-semibold" style={{ background: 'var(--accent-light)', color: 'var(--accent)' }}>
+                🔄 Reagendando reunión
+              </div>
+            )}
+
             <div className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-tertiary)' }}>
-              {filterType ? 'Reunión seleccionada' : 'Tipo de reunión'}
+              {isReschedule ? 'Reunión' : filterType ? 'Reunión seleccionada' : 'Tipo de reunión'}
             </div>
 
             <div className="flex flex-col gap-2.5">
               {displayTypes.map((et) => (
                 <div
                   key={et.id}
-                  className={`flex items-center gap-3.5 p-4 rounded-[14px] border-2 cursor-pointer transition-all ${selectedType?.id === et.id ? 'border-[var(--accent)] bg-[var(--accent-light)]' : 'border-[var(--border)] hover:border-[var(--border-strong)]'}`}
+                  className={`flex items-center gap-3.5 p-4 rounded-[14px] border-2 transition-all ${isReschedule ? '' : 'cursor-pointer'} ${selectedType?.id === et.id ? 'border-[var(--accent)] bg-[var(--accent-light)]' : 'border-[var(--border)] hover:border-[var(--border-strong)]'}`}
                   onClick={() => {
+                    if (isReschedule) return // Lock type in reschedule mode
                     setSelectedType(et)
                     setStep('date')
                     setSelectedSlot(null)
@@ -307,7 +382,7 @@ export default function BookingPage({ filterType }: Props) {
                             return (
                               <button key={i}
                                 className={`slot-btn ${isSel ? 'selected' : ''}`}
-                                onClick={() => { setSelectedSlot(slot); setStep('form') }}>
+                                onClick={() => { setSelectedSlot(slot); setStep(isReschedule ? 'form' : 'form') }}>
                                 {slot.label}
                               </button>
                             )
@@ -331,7 +406,7 @@ export default function BookingPage({ filterType }: Props) {
                 <button onClick={goBack} className="text-sm mb-4 cursor-pointer border-none bg-transparent" style={{ color: 'var(--text-secondary)' }}>
                   ← Cambiar horario
                 </button>
-                <div className="font-display text-xl font-semibold">Confirmar reunión</div>
+                <div className="font-display text-xl font-semibold">{isReschedule ? 'Confirmar reagendamiento' : 'Confirmar reunión'}</div>
                 <div className="inline-flex items-center gap-2 px-4 py-2 rounded-[10px] mt-3 mb-6 text-sm font-semibold" style={{ background: 'var(--surface-alt)', color: 'var(--text-secondary)' }}>
                   {selectedType.emoji} {selectedType.name} · {selectedType.duration} min · {DAYS_ES[selectedDate.getDay()]} {selectedDate.getDate()}/{selectedDate.getMonth() + 1} · {selectedSlot.label}
                 </div>
@@ -342,14 +417,14 @@ export default function BookingPage({ filterType }: Props) {
                     Nombre <span style={{ color: 'var(--accent)' }}>*</span>
                   </label>
                   <input className="form-input" placeholder="Tu nombre completo" value={formData.name}
-                    onChange={e => setFormData({ ...formData, name: e.target.value })} />
+                    onChange={e => setFormData({ ...formData, name: e.target.value })} readOnly={isReschedule} style={isReschedule ? { opacity: 0.7 } : {}} />
                 </div>
                 <div className="mb-4">
                   <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-secondary)' }}>
                     Email <span style={{ color: 'var(--accent)' }}>*</span>
                   </label>
                   <input className="form-input" type="email" placeholder="tu@email.com" value={formData.email}
-                    onChange={e => setFormData({ ...formData, email: e.target.value })} />
+                    onChange={e => setFormData({ ...formData, email: e.target.value })} readOnly={isReschedule} style={isReschedule ? { opacity: 0.7 } : {}} />
                 </div>
 
                 {selectedType.extra_fields.length > 0 && (
@@ -386,7 +461,7 @@ export default function BookingPage({ filterType }: Props) {
 
                 <div className="flex gap-2.5 mt-6">
                   <button className="btn-primary" onClick={handleBook} disabled={!isFormValid() || submitting}>
-                    {submitting ? 'Agendando...' : 'Confirmar reserva'}
+                    {submitting ? (isReschedule ? 'Reagendando...' : 'Agendando...') : (isReschedule ? 'Confirmar reagendamiento' : 'Confirmar reserva')}
                   </button>
                   <button className="btn-secondary" onClick={goBack}>Volver</button>
                 </div>
@@ -397,9 +472,9 @@ export default function BookingPage({ filterType }: Props) {
             {step === 'success' && selectedType && selectedDate && selectedSlot && (
               <div className="animate-slide-up text-center py-16">
                 <div className="w-[72px] h-[72px] rounded-full flex items-center justify-center text-3xl mx-auto mb-6 font-bold" style={{ background: 'var(--success-light)', color: 'var(--success)', fontSize: '28px' }}>✓</div>
-                <div className="font-display text-2xl font-semibold mb-2">¡Reunión agendada!</div>
+                <div className="font-display text-2xl font-semibold mb-2">{isReschedule ? '¡Reunión reagendada!' : '¡Reunión agendada!'}</div>
                 <div className="text-sm max-w-[360px] mx-auto" style={{ color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-                  Tu reunión con {config.name} ha sido confirmada.
+                  {isReschedule ? 'Tu reunión ha sido movida exitosamente.' : `Tu reunión con ${config.name} ha sido confirmada.`}
                 </div>
 
                 <div className="max-w-[320px] mx-auto mt-6 rounded-[14px] p-5 text-left text-sm" style={{ background: 'var(--surface-alt)' }}>
