@@ -10,12 +10,10 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const router = useRouter()
 
-  // If already logged in, redirect to admin
+  // Clear any stale client-side session on mount to prevent loops
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) router.push('/admin')
-    })
-  }, [router])
+    supabase.auth.signOut()
+  }, [])
 
   const handleGoogleLogin = async () => {
     setLoading(true)
