@@ -237,7 +237,11 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
     )
   }
 
-  const displayTypes = filterType ? eventTypes.filter(t => t.id === filterType) : eventTypes
+  const displayTypes = (isReschedule && selectedType)
+    ? eventTypes.filter(t => t.id === selectedType.id)
+    : filterType
+      ? eventTypes.filter(t => t.id === filterType)
+      : eventTypes
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
@@ -382,7 +386,7 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
                             return (
                               <button key={i}
                                 className={`slot-btn ${isSel ? 'selected' : ''}`}
-                                onClick={() => { setSelectedSlot(slot); setStep(isReschedule ? 'form' : 'form') }}>
+                                onClick={() => { setSelectedSlot(slot); setStep('form') }}>
                                 {slot.label}
                               </button>
                             )
@@ -400,7 +404,7 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
               </>
             )}
 
-            {/* Step: Form */}
+            {/* Step: Form (reschedule = summary only, new booking = full form) */}
             {step === 'form' && selectedSlot && selectedType && selectedDate && (
               <div className="animate-slide-up">
                 <button onClick={goBack} className="text-sm mb-4 cursor-pointer border-none bg-transparent" style={{ color: 'var(--text-secondary)' }}>
@@ -411,47 +415,69 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
                   {selectedType.emoji} {selectedType.name} · {selectedType.duration} min · {DAYS_ES[selectedDate.getDay()]} {selectedDate.getDate()}/{selectedDate.getMonth() + 1} · {selectedSlot.label}
                 </div>
 
-                <div className="text-xs font-semibold uppercase tracking-wider mb-3 mt-2" style={{ color: 'var(--text-tertiary)' }}>Tu información</div>
-                <div className="mb-4">
-                  <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-secondary)' }}>
-                    Nombre <span style={{ color: 'var(--accent)' }}>*</span>
-                  </label>
-                  <input className="form-input" placeholder="Tu nombre completo" value={formData.name}
-                    onChange={e => setFormData({ ...formData, name: e.target.value })} readOnly={isReschedule} style={isReschedule ? { opacity: 0.7 } : {}} />
-                </div>
-                <div className="mb-4">
-                  <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-secondary)' }}>
-                    Email <span style={{ color: 'var(--accent)' }}>*</span>
-                  </label>
-                  <input className="form-input" type="email" placeholder="tu@email.com" value={formData.email}
-                    onChange={e => setFormData({ ...formData, email: e.target.value })} readOnly={isReschedule} style={isReschedule ? { opacity: 0.7 } : {}} />
-                </div>
-
-                {selectedType.extra_fields.length > 0 && (
+                {isReschedule ? (
                   <>
-                    <div className="text-xs font-semibold uppercase tracking-wider mb-3 mt-6" style={{ color: 'var(--text-tertiary)' }}>Sobre la reunión</div>
-                    {selectedType.extra_fields.map(f => (
-                      <div className="mb-4" key={f.key}>
-                        <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-secondary)' }}>
-                          {f.label} {f.required && <span style={{ color: 'var(--accent)' }}>*</span>}
-                        </label>
-                        {f.type === 'textarea' ? (
-                          <textarea className="form-input" placeholder={f.placeholder} value={extraData[f.key] || ''}
-                            onChange={e => setExtraData({ ...extraData, [f.key]: e.target.value })} />
-                        ) : (
-                          <input className="form-input" placeholder={f.placeholder} value={extraData[f.key] || ''}
-                            onChange={e => setExtraData({ ...extraData, [f.key]: e.target.value })} />
-                        )}
-                      </div>
-                    ))}
+                    {/* Reschedule: read-only summary */}
+                    <div className="rounded-[14px] p-5 text-sm mb-6" style={{ background: 'var(--surface-alt)' }}>
+                      <div className="flex justify-between py-1.5"><span style={{ color: 'var(--text-tertiary)' }}>Nombre</span><span className="font-semibold">{formData.name}</span></div>
+                      <div className="flex justify-between py-1.5"><span style={{ color: 'var(--text-tertiary)' }}>Email</span><span className="font-semibold">{formData.email}</span></div>
+                      {extraData.startup && <div className="flex justify-between py-1.5"><span style={{ color: 'var(--text-tertiary)' }}>Startup</span><span className="font-semibold">{extraData.startup}</span></div>}
+                      {rescheduleData?.datetime && (
+                        <div className="flex justify-between py-1.5 mt-2 pt-3" style={{ borderTop: '1px solid var(--border)' }}>
+                          <span style={{ color: 'var(--text-tertiary)' }}>Fecha original</span>
+                          <span className="font-semibold" style={{ textDecoration: 'line-through', color: 'var(--text-tertiary)' }}>
+                            {new Date(rescheduleData.datetime).toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })} {new Date(rescheduleData.datetime).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {/* New booking: full form */}
+                    <div className="text-xs font-semibold uppercase tracking-wider mb-3 mt-2" style={{ color: 'var(--text-tertiary)' }}>Tu información</div>
+                    <div className="mb-4">
+                      <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+                        Nombre <span style={{ color: 'var(--accent)' }}>*</span>
+                      </label>
+                      <input className="form-input" placeholder="Tu nombre completo" value={formData.name}
+                        onChange={e => setFormData({ ...formData, name: e.target.value })} />
+                    </div>
+                    <div className="mb-4">
+                      <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+                        Email <span style={{ color: 'var(--accent)' }}>*</span>
+                      </label>
+                      <input className="form-input" type="email" placeholder="tu@email.com" value={formData.email}
+                        onChange={e => setFormData({ ...formData, email: e.target.value })} />
+                    </div>
+
+                    {selectedType.extra_fields.length > 0 && (
+                      <>
+                        <div className="text-xs font-semibold uppercase tracking-wider mb-3 mt-6" style={{ color: 'var(--text-tertiary)' }}>Sobre la reunión</div>
+                        {selectedType.extra_fields.map(f => (
+                          <div className="mb-4" key={f.key}>
+                            <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+                              {f.label} {f.required && <span style={{ color: 'var(--accent)' }}>*</span>}
+                            </label>
+                            {f.type === 'textarea' ? (
+                              <textarea className="form-input" placeholder={f.placeholder} value={extraData[f.key] || ''}
+                                onChange={e => setExtraData({ ...extraData, [f.key]: e.target.value })} />
+                            ) : (
+                              <input className="form-input" placeholder={f.placeholder} value={extraData[f.key] || ''}
+                                onChange={e => setExtraData({ ...extraData, [f.key]: e.target.value })} />
+                            )}
+                          </div>
+                        ))}
+                      </>
+                    )}
+
+                    <div className="mb-4">
+                      <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-secondary)' }}>Notas adicionales</label>
+                      <textarea className="form-input" placeholder="¿Algo más que deba saber?" value={formData.notes}
+                        onChange={e => setFormData({ ...formData, notes: e.target.value })} />
+                    </div>
                   </>
                 )}
-
-                <div className="mb-4">
-                  <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-secondary)' }}>Notas adicionales</label>
-                  <textarea className="form-input" placeholder="¿Algo más que deba saber?" value={formData.notes}
-                    onChange={e => setFormData({ ...formData, notes: e.target.value })} />
-                </div>
 
                 {error && (
                   <div className="text-sm font-medium px-4 py-3 rounded-[10px] mb-4" style={{ background: '#FFF5F5', color: '#C25050', border: '1px solid #E8B4B4' }}>
@@ -460,7 +486,7 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
                 )}
 
                 <div className="flex gap-2.5 mt-6">
-                  <button className="btn-primary" onClick={handleBook} disabled={!isFormValid() || submitting}>
+                  <button className="btn-primary" onClick={handleBook} disabled={(!isReschedule && !isFormValid()) || submitting}>
                     {submitting ? (isReschedule ? 'Reagendando...' : 'Agendando...') : (isReschedule ? 'Confirmar reagendamiento' : 'Confirmar reserva')}
                   </button>
                   <button className="btn-secondary" onClick={goBack}>Volver</button>
