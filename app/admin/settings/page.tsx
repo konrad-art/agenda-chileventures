@@ -2,8 +2,16 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
-import { Config, EventType } from '@/lib/types'
+import { Config, EventType, ExtraField } from '@/lib/types'
 import { DAYS_ES } from '@/lib/helpers'
+
+type EditingEventType = Omit<EventType, 'sort_order'> & { sort_order?: number }
+
+const EMOJI_OPTIONS = ['👋', '🔍', '🏢', '🔄', '⚡', '📅', '💡', '🎯', '🚀', '💬', '🤝', '📊', '📞', '☕', '🧑‍💻', '📝']
+
+function generateSlug(name: string): string {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 30) || 'new-type'
+}
 
 export default function SettingsPage() {
   const [config, setConfig] = useState<Config | null>(null)
@@ -13,23 +21,30 @@ export default function SettingsPage() {
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [gcalConnected, setGcalConnected] = useState(false)
 
+  // Event type editing
+  const [editingType, setEditingType] = useState<EditingEventType | null>(null)
+  const [isNewType, setIsNewType] = useState(false)
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
+  const [typeSaving, setTypeSaving] = useState(false)
+
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://agenda-chileventures.vercel.app'
 
   useEffect(() => {
-    async function load() {
-      const [configRes, typesRes] = await Promise.all([
-        supabase.from('config').select('*').single(),
-        supabase.from('event_types').select('*').order('sort_order'),
-      ])
-      if (configRes.data) {
-        setConfig(configRes.data)
-        setGcalConnected(!!configRes.data.google_calendar_token)
-      }
-      if (typesRes.data) setEventTypes(typesRes.data)
-      setLoading(false)
-    }
-    load()
+    loadData()
   }, [])
+
+  async function loadData() {
+    const [configRes, typesRes] = await Promise.all([
+      supabase.from('config').select('*').single(),
+      supabase.from('event_types').select('*').order('sort_order'),
+    ])
+    if (configRes.data) {
+      setConfig(configRes.data)
+      setGcalConnected(!!configRes.data.google_calendar_token)
+    }
+    if (typesRes.data) setEventTypes(typesRes.data)
+    setLoading(false)
+  }
 
   const saveConfig = async (updates: Partial<Config>) => {
     if (!config) return
@@ -46,10 +61,257 @@ export default function SettingsPage() {
     setTimeout(() => setCopiedId(null), 2000)
   }
 
+  // --- Event Type CRUD ---
+
+  const startEditing = (et: EventType) => {
+    setEditingType({ ...et, extra_fields: [...et.extra_fields.map(f => ({ ...f }))] })
+    setIsNewType(false)
+  }
+
+  const startCreating = () => {
+    const maxOrder = eventTypes.length > 0 ? Math.max(...eventTypes.map(t => t.sort_order)) : 0
+    setEditingType({
+      id: '',
+      name: '',
+      duration: 30,
+      color: '#C25B3F',
+      emoji: '📅',
+      description: '',
+      extra_fields: [],
+      is_active: true,
+      sort_order: maxOrder + 1,
+    })
+    setIsNewType(true)
+  }
+
+  const cancelEditing = () => {
+    setEditingType(null)
+    setIsNewType(false)
+  }
+
+  const updateEditingField = (key: keyof EditingEventType, value: any) => {
+    if (!editingType) return
+    const updated = { ...editingType, [key]: value }
+    // Auto-generate slug from name for new types
+    if (key === 'name' && isNewType) {
+      updated.id = generateSlug(value)
+    }
+    setEditingType(updated)
+  }
+
+  const addExtraField = () => {
+    if (!editingType) return
+    setEditingType({
+      ...editingType,
+      extra_fields: [...editingType.extra_fields, { key: '', label: '', placeholder: '', required: false, type: 'text' }]
+    })
+  }
+
+  const updateExtraField = (index: number, field: Partial<ExtraField>) => {
+    if (!editingType) return
+    const fields = [...editingType.extra_fields]
+    fields[index] = { ...fields[index], ...field }
+    // Auto-generate key from label
+    if (field.label !== undefined) {
+      fields[index].key = field.label.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '')
+    }
+    setEditingType({ ...editingType, extra_fields: fields })
+  }
+
+  const removeExtraField = (index: number) => {
+    if (!editingType) return
+    setEditingType({
+      ...editingType,
+      extra_fields: editingType.extra_fields.filter((_, i) => i !== index)
+    })
+  }
+
+  const saveEventType = async () => {
+    if (!editingType || !editingType.name.trim()) return
+    setTypeSaving(true)
+
+    const data = {
+      id: editingType.id || generateSlug(editingType.name),
+      name: editingType.name.trim(),
+      duration: editingType.duration,
+      color: editingType.color || '#C25B3F',
+      emoji: editingType.emoji,
+      description: editingType.description?.trim() || '',
+      extra_fields: editingType.extra_fields.filter(f => f.label.trim()),
+      is_active: editingType.is_active ?? true,
+      sort_order: editingType.sort_order ?? eventTypes.length,
+    }
+
+    if (isNewType) {
+      await supabase.from('event_types').insert(data)
+    } else {
+      const { id, ...updateData } = data
+      await supabase.from('event_types').update(updateData).eq('id', editingType.id)
+    }
+
+    await loadData()
+    setEditingType(null)
+    setIsNewType(false)
+    setTypeSaving(false)
+  }
+
+  const deleteEventType = async (id: string) => {
+    await supabase.from('event_types').delete().eq('id', id)
+    setDeleteConfirm(null)
+    await loadData()
+  }
+
+  const toggleActive = async (et: EventType) => {
+    await supabase.from('event_types').update({ is_active: !et.is_active }).eq('id', et.id)
+    await loadData()
+  }
+
   if (loading || !config) {
     return <div className="text-center py-12" style={{ color: 'var(--text-tertiary)' }}>Cargando...</div>
   }
 
+  // --- Event Type Editor Modal ---
+  if (editingType) {
+    return (
+      <div>
+        <button onClick={cancelEditing} className="flex items-center gap-2 text-sm font-semibold mb-6 cursor-pointer bg-transparent border-none" style={{ color: 'var(--text-secondary)', fontFamily: 'DM Sans' }}>
+          ← Volver a configuración
+        </button>
+
+        <div className="rounded-[16px] border p-7" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+          <h2 className="font-display text-xl font-semibold mb-6">
+            {isNewType ? 'Crear tipo de reunión' : `Editar: ${editingType.name}`}
+          </h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
+            {/* Name */}
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-secondary)' }}>Nombre *</label>
+              <input className="form-input" value={editingType.name} onChange={e => updateEditingField('name', e.target.value)} placeholder="Ej: Intro Call" />
+            </div>
+
+            {/* Duration */}
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-secondary)' }}>Duración (minutos) *</label>
+              <input className="form-input" type="number" min={5} max={480} value={editingType.duration} onChange={e => updateEditingField('duration', parseInt(e.target.value) || 30)} />
+            </div>
+
+            {/* Slug / ID */}
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+                Link (slug) {!isNewType && <span className="normal-case font-normal">— no editable</span>}
+              </label>
+              <div className="flex items-center gap-2">
+                <span className="text-sm" style={{ color: 'var(--text-tertiary)' }}>{siteUrl}/</span>
+                <input className="form-input flex-1" value={editingType.id} disabled={!isNewType}
+                  onChange={e => isNewType && updateEditingField('id', e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                  style={!isNewType ? { opacity: 0.6 } : {}} />
+              </div>
+            </div>
+
+            {/* Emoji */}
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-secondary)' }}>Emoji</label>
+              <div className="flex flex-wrap gap-1.5">
+                {EMOJI_OPTIONS.map(e => (
+                  <button key={e} onClick={() => updateEditingField('emoji', e)}
+                    className={`w-10 h-10 rounded-[8px] text-lg border-2 cursor-pointer flex items-center justify-center transition-all ${editingType.emoji === e ? 'border-[var(--accent)] bg-[var(--accent-light)]' : 'border-[var(--border)] bg-[var(--surface)]'}`}>
+                    {e}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Description */}
+          <div className="mb-6">
+            <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-secondary)' }}>Descripción</label>
+            <input className="form-input" value={editingType.description || ''} onChange={e => updateEditingField('description', e.target.value)}
+              placeholder="Ej: Primera conversación para conocer tu startup" />
+          </div>
+
+          {/* Active toggle */}
+          <div className="flex items-center gap-3 mb-8 px-4 py-3 rounded-[12px]" style={{ background: 'var(--surface-alt)' }}>
+            <button onClick={() => updateEditingField('is_active', !editingType.is_active)}
+              className="relative w-11 h-6 rounded-full border-none cursor-pointer transition-all"
+              style={{ background: editingType.is_active ? 'var(--accent)' : 'var(--border-strong)' }}>
+              <div className="absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all"
+                style={{ left: editingType.is_active ? '22px' : '2px' }} />
+            </button>
+            <span className="text-sm font-medium">{editingType.is_active ? 'Activo — visible para agendar' : 'Inactivo — oculto'}</span>
+          </div>
+
+          {/* Extra Fields */}
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-3">
+              <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Campos del formulario</label>
+              <button onClick={addExtraField}
+                className="px-3 py-1.5 rounded-[8px] text-xs font-semibold cursor-pointer border-2 transition-all bg-transparent"
+                style={{ borderColor: 'var(--accent)', color: 'var(--accent)', fontFamily: 'DM Sans' }}>
+                + Agregar campo
+              </button>
+            </div>
+
+            <div className="text-xs mb-3" style={{ color: 'var(--text-tertiary)' }}>
+              Nombre y email se piden siempre. Agrega campos extra como nombre del startup, link al deck, etc.
+            </div>
+
+            {editingType.extra_fields.length === 0 ? (
+              <div className="text-center py-6 rounded-[12px] border-2 border-dashed" style={{ borderColor: 'var(--border)', color: 'var(--text-tertiary)' }}>
+                <div className="text-sm">Sin campos extra — solo se pedirá nombre, email y notas</div>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {editingType.extra_fields.map((field, i) => (
+                  <div key={i} className="rounded-[12px] border p-4" style={{ borderColor: 'var(--border)', background: 'var(--surface-alt)' }}>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+                      <div>
+                        <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-tertiary)' }}>Etiqueta</label>
+                        <input className="form-input" value={field.label} onChange={e => updateExtraField(i, { label: e.target.value })} placeholder="Ej: Nombre del startup" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-tertiary)' }}>Placeholder</label>
+                        <input className="form-input" value={field.placeholder} onChange={e => updateExtraField(i, { placeholder: e.target.value })} placeholder="Ej: TuStartup.com" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-tertiary)' }}>Tipo</label>
+                        <select className="form-input" value={field.type || 'text'} onChange={e => updateExtraField(i, { type: e.target.value })}>
+                          <option value="text">Texto corto</option>
+                          <option value="textarea">Texto largo</option>
+                          <option value="url">URL / Link</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <label className="flex items-center gap-2 cursor-pointer text-sm" style={{ color: 'var(--text-secondary)' }}>
+                        <input type="checkbox" checked={field.required} onChange={e => updateExtraField(i, { required: e.target.checked })} />
+                        Obligatorio
+                      </label>
+                      <button onClick={() => removeExtraField(i)}
+                        className="text-xs font-semibold cursor-pointer bg-transparent border-none"
+                        style={{ color: '#C25050', fontFamily: 'DM Sans' }}>
+                        Eliminar campo
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Save / Cancel */}
+          <div className="flex items-center gap-3 pt-4 border-t" style={{ borderColor: 'var(--border)' }}>
+            <button onClick={saveEventType} disabled={typeSaving || !editingType.name.trim()} className="btn-primary">
+              {typeSaving ? 'Guardando...' : isNewType ? 'Crear tipo de reunión' : 'Guardar cambios'}
+            </button>
+            <button onClick={cancelEditing} className="btn-secondary">Cancelar</button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // --- Main Settings View ---
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       {/* Profile */}
@@ -108,6 +370,77 @@ export default function SettingsPage() {
         </div>
       </div>
 
+      {/* Event Types CRUD */}
+      <div className="rounded-[16px] border p-7 md:col-span-2" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="font-display text-lg font-semibold flex items-center gap-2">📋 Tipos de reunión</h2>
+          <button onClick={startCreating}
+            className="btn-primary text-sm !py-2.5 !px-5">
+            + Nuevo tipo
+          </button>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          {eventTypes.map(et => (
+            <div key={et.id} className="flex items-center gap-4 px-5 py-4 rounded-[12px] border transition-all hover:shadow-sm"
+              style={{ borderColor: 'var(--border)', background: !et.is_active ? 'var(--surface-alt)' : 'var(--surface)' }}>
+
+              <span className="text-2xl">{et.emoji}</span>
+
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold">{et.name}</span>
+                  <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: 'var(--surface-alt)', color: 'var(--text-secondary)' }}>
+                    {et.duration} min
+                  </span>
+                  {!et.is_active && (
+                    <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: '#FFF5F5', color: '#C25050' }}>
+                      Inactivo
+                    </span>
+                  )}
+                </div>
+                <div className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>
+                  {siteUrl}/{et.id} · {et.extra_fields.length} campo{et.extra_fields.length !== 1 ? 's' : ''} extra
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                <button onClick={() => toggleActive(et)}
+                  className="px-3 py-1.5 rounded-[8px] text-xs font-semibold cursor-pointer border bg-transparent transition-all"
+                  style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)', fontFamily: 'DM Sans' }}>
+                  {et.is_active ? 'Desactivar' : 'Activar'}
+                </button>
+                <button onClick={() => startEditing(et)}
+                  className="px-3 py-1.5 rounded-[8px] text-xs font-semibold cursor-pointer border-2 bg-transparent transition-all"
+                  style={{ borderColor: 'var(--accent)', color: 'var(--accent)', fontFamily: 'DM Sans' }}>
+                  Editar
+                </button>
+                {deleteConfirm === et.id ? (
+                  <div className="flex items-center gap-1">
+                    <button onClick={() => deleteEventType(et.id)}
+                      className="px-3 py-1.5 rounded-[8px] text-xs font-semibold cursor-pointer border-none text-white"
+                      style={{ background: '#C25050', fontFamily: 'DM Sans' }}>
+                      Confirmar
+                    </button>
+                    <button onClick={() => setDeleteConfirm(null)}
+                      className="px-3 py-1.5 rounded-[8px] text-xs font-semibold cursor-pointer border bg-transparent"
+                      style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)', fontFamily: 'DM Sans' }}>
+                      No
+                    </button>
+                  </div>
+                ) : (
+                  <button onClick={() => setDeleteConfirm(et.id)}
+                    className="px-3 py-1.5 rounded-[8px] text-xs font-semibold cursor-pointer border bg-transparent transition-all"
+                    style={{ borderColor: '#E8B4B4', color: '#C25050', fontFamily: 'DM Sans' }}>
+                    Eliminar
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
       {/* Google Calendar */}
       <div className="rounded-[16px] border p-7 md:col-span-2" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
         <h2 className="font-display text-lg font-semibold mb-3 flex items-center gap-2">📅 Google Calendar</h2>
@@ -147,7 +480,7 @@ export default function SettingsPage() {
 
         <div className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--text-tertiary)' }}>Links por tipo</div>
         <div className="flex flex-col gap-2">
-          {eventTypes.map(et => (
+          {eventTypes.filter(et => et.is_active).map(et => (
             <div key={et.id} className="flex items-center gap-3 px-4 py-3 rounded-[12px]" style={{ background: 'var(--surface-alt)' }}>
               <span className="text-lg">{et.emoji}</span>
               <div className="flex-1 min-w-0">
