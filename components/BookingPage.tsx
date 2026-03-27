@@ -222,7 +222,7 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
       <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg)' }}>
         <div className="text-center">
           <div className="text-5xl mb-4">⚠️</div>
-          <div className="font-display text-xl font-semibold mb-2">Enlace no válido</div>
+          <div className="text-xl font-semibold mb-2">Enlace no válido</div>
           <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>{rescheduleError}</div>
         </div>
       </div>
@@ -331,7 +331,7 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
                 )}
 
                 <div className="flex items-center justify-between mb-5">
-                  <div className="font-display text-xl font-semibold" style={{ letterSpacing: '-0.2px' }}>
+                  <div className="text-xl font-semibold" style={{ letterSpacing: '-0.2px' }}>
                     {MONTHS_ES[calMonth.getMonth()]} {calMonth.getFullYear()}
                   </div>
                   <div className="flex gap-1.5">
@@ -410,7 +410,7 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
                 <button onClick={goBack} className="text-sm mb-4 cursor-pointer border-none bg-transparent" style={{ color: 'var(--text-secondary)' }}>
                   ← Cambiar horario
                 </button>
-                <div className="font-display text-xl font-semibold">{isReschedule ? 'Confirmar reagendamiento' : 'Confirmar reunión'}</div>
+                <div className="text-xl font-semibold">{isReschedule ? 'Confirmar reagendamiento' : 'Confirmar reunión'}</div>
                 <div className="inline-flex items-center gap-2 px-4 py-2 rounded-[10px] mt-3 mb-6 text-sm font-semibold" style={{ background: 'var(--surface-alt)', color: 'var(--text-secondary)' }}>
                   {selectedType.emoji} {selectedType.name} · {selectedType.duration} min · {DAYS_ES[selectedDate.getDay()]} {selectedDate.getDate()}/{selectedDate.getMonth() + 1} · {selectedSlot.label}
                 </div>
@@ -498,7 +498,7 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
             {step === 'success' && selectedType && selectedDate && selectedSlot && (
               <div className="animate-slide-up text-center py-16">
                 <div className="w-[72px] h-[72px] rounded-full flex items-center justify-center text-3xl mx-auto mb-6 font-bold" style={{ background: 'var(--success-light)', color: 'var(--success)', fontSize: '28px' }}>✓</div>
-                <div className="font-display text-2xl font-semibold mb-2">{isReschedule ? '¡Reunión reagendada!' : '¡Reunión agendada!'}</div>
+                <div className="text-2xl font-semibold mb-2">{isReschedule ? '¡Reunión reagendada!' : '¡Reunión agendada!'}</div>
                 <div className="text-sm max-w-[360px] mx-auto" style={{ color: 'var(--text-secondary)', lineHeight: 1.6 }}>
                   {isReschedule ? 'Tu reunión ha sido movida exitosamente.' : `Tu reunión con ${config.name} ha sido confirmada.`}
                 </div>

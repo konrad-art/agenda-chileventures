@@ -60,7 +60,7 @@ export default function LoginPage() {
               background: 'var(--surface)',
               borderColor: 'var(--border)',
               color: 'var(--text)',
-              fontFamily: 'DM Sans, sans-serif',
+              fontFamily: 'inherit',
             }}
           >
             <svg width="20" height="20" viewBox="0 0 24 24">

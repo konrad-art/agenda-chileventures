@@ -37,7 +37,7 @@ export default function AdminPage() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="font-display text-2xl font-semibold">📋 Reservas</h1>
+        <h1 className="text-2xl font-semibold">📋 Reservas</h1>
         <div className="flex gap-1 p-1 rounded-[10px]" style={{ background: 'var(--surface-alt)' }}>
           {(['upcoming', 'past', 'cancelled'] as const).map(f => (
             <button key={f} onClick={() => setFilter(f)}
@@ -66,7 +66,7 @@ export default function AdminPage() {
                   <div className="text-xs font-semibold uppercase" style={{ color: 'var(--text-tertiary)' }}>
                     {MONTHS_ES[dt.getMonth()].slice(0, 3)}
                   </div>
-                  <div className="text-2xl font-display font-bold" style={{ letterSpacing: '-0.5px' }}>{dt.getDate()}</div>
+                  <div className="text-2xl font-bold" style={{ letterSpacing: '-0.5px' }}>{dt.getDate()}</div>
                   <div className="text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>
                     {String(dt.getHours()).padStart(2, '0')}:{String(dt.getMinutes()).padStart(2, '0')}
                   </div>
@@ -89,7 +89,7 @@ export default function AdminPage() {
                 {filter === 'upcoming' && (
                   <button onClick={() => handleCancel(b.id)}
                     className="px-3 py-1.5 rounded-[8px] text-xs font-semibold cursor-pointer border"
-                    style={{ background: '#FFF5F5', color: '#C25050', borderColor: '#E8B4B4', fontFamily: 'DM Sans' }}>
+                    style={{ background: '#FFF5F5', color: '#C25050', borderColor: '#E8B4B4', fontFamily: 'inherit' }}>
                     Cancelar
                   </button>
                 )}

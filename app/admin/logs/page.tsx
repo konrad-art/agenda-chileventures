@@ -83,7 +83,7 @@ export default function LogsPage() {
     <div>
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <h1 className="font-display text-2xl font-semibold">Monitoreo</h1>
+        <h1 className="text-2xl font-semibold">Monitoreo</h1>
         <button
           onClick={runHealthCheck}
           disabled={healthLoading}

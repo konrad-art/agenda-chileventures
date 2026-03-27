@@ -174,12 +174,12 @@ export default function SettingsPage() {
   if (editingType) {
     return (
       <div>
-        <button onClick={cancelEditing} className="flex items-center gap-2 text-sm font-semibold mb-6 cursor-pointer bg-transparent border-none" style={{ color: 'var(--text-secondary)', fontFamily: 'DM Sans' }}>
+        <button onClick={cancelEditing} className="flex items-center gap-2 text-sm font-semibold mb-6 cursor-pointer bg-transparent border-none" style={{ color: 'var(--text-secondary)', fontFamily: 'inherit' }}>
           ← Volver a configuración
         </button>
 
         <div className="rounded-[16px] border p-7" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
-          <h2 className="font-display text-xl font-semibold mb-6">
+          <h2 className="text-xl font-semibold mb-6">
             {isNewType ? 'Crear tipo de reunión' : `Editar: ${editingType.name}`}
           </h2>
 
@@ -247,7 +247,7 @@ export default function SettingsPage() {
               <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Campos del formulario</label>
               <button onClick={addExtraField}
                 className="px-3 py-1.5 rounded-[8px] text-xs font-semibold cursor-pointer border-2 transition-all bg-transparent"
-                style={{ borderColor: 'var(--accent)', color: 'var(--accent)', fontFamily: 'DM Sans' }}>
+                style={{ borderColor: 'var(--accent)', color: 'var(--accent)', fontFamily: 'inherit' }}>
                 + Agregar campo
               </button>
             </div>
@@ -289,7 +289,7 @@ export default function SettingsPage() {
                       </label>
                       <button onClick={() => removeExtraField(i)}
                         className="text-xs font-semibold cursor-pointer bg-transparent border-none"
-                        style={{ color: '#C25050', fontFamily: 'DM Sans' }}>
+                        style={{ color: '#C25050', fontFamily: 'inherit' }}>
                         Eliminar campo
                       </button>
                     </div>
@@ -316,7 +316,7 @@ export default function SettingsPage() {
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       {/* Profile */}
       <div className="rounded-[16px] border p-7" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
-        <h2 className="font-display text-lg font-semibold mb-5 flex items-center gap-2">👤 Perfil</h2>
+        <h2 className="text-lg font-semibold mb-5 flex items-center gap-2">👤 Perfil</h2>
         <div className="mb-4">
           <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-secondary)' }}>Nombre</label>
           <input className="form-input" value={config.name} onChange={e => saveConfig({ name: e.target.value })} />
@@ -333,27 +333,46 @@ export default function SettingsPage() {
 
       {/* Schedule */}
       <div className="rounded-[16px] border p-7" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
-        <h2 className="font-display text-lg font-semibold mb-5 flex items-center gap-2">⏰ Horario</h2>
-        {[
-          { label: 'Desde', key: 'start_hour' as const, suffix: 'hrs' },
-          { label: 'Hasta', key: 'end_hour' as const, suffix: 'hrs' },
-          { label: 'Buffer', key: 'buffer_minutes' as const, suffix: 'min entre reuniones' },
-          { label: 'Ventana', key: 'max_days_ahead' as const, suffix: 'días hacia adelante' },
-        ].map(item => (
-          <div key={item.key} className="flex items-center gap-3 mb-3">
-            <span className="text-sm min-w-[60px]" style={{ color: 'var(--text-secondary)' }}>{item.label}</span>
-            <input type="number" className="w-[100px] text-center px-3 py-2.5 rounded-[10px] border-2 font-semibold text-sm outline-none"
-              style={{ borderColor: 'var(--border)', color: 'var(--text)', fontFamily: 'DM Sans' }}
-              value={config[item.key]}
-              onChange={e => saveConfig({ [item.key]: parseInt(e.target.value) || 0 })} />
-            <span className="text-sm" style={{ color: 'var(--text-tertiary)' }}>{item.suffix}</span>
-          </div>
-        ))}
+        <h2 className="text-lg font-semibold mb-5 flex items-center gap-2">⏰ Horario</h2>
+        <div className="flex items-center gap-3 mb-3">
+          <span className="text-sm min-w-[60px]" style={{ color: 'var(--text-secondary)' }}>Desde</span>
+          <select className="form-input w-[120px]" value={config.start_hour} onChange={e => saveConfig({ start_hour: parseInt(e.target.value) })}>
+            {Array.from({ length: 24 }, (_, i) => (
+              <option key={i} value={i}>{String(i).padStart(2, '0')}:00</option>
+            ))}
+          </select>
+        </div>
+        <div className="flex items-center gap-3 mb-3">
+          <span className="text-sm min-w-[60px]" style={{ color: 'var(--text-secondary)' }}>Hasta</span>
+          <select className="form-input w-[120px]" value={config.end_hour} onChange={e => saveConfig({ end_hour: parseInt(e.target.value) })}>
+            {Array.from({ length: 24 }, (_, i) => (
+              <option key={i} value={i}>{String(i).padStart(2, '0')}:00</option>
+            ))}
+          </select>
+        </div>
+        <div className="flex items-center gap-3 mb-3">
+          <span className="text-sm min-w-[60px]" style={{ color: 'var(--text-secondary)' }}>Buffer</span>
+          <select className="form-input w-[120px]" value={config.buffer_minutes} onChange={e => saveConfig({ buffer_minutes: parseInt(e.target.value) })}>
+            {[0, 5, 10, 15, 20, 30, 45, 60].map(m => (
+              <option key={m} value={m}>{m} min</option>
+            ))}
+          </select>
+          <span className="text-sm" style={{ color: 'var(--text-tertiary)' }}>entre reuniones</span>
+        </div>
+        <div className="flex items-center gap-3 mb-3">
+          <span className="text-sm min-w-[60px]" style={{ color: 'var(--text-secondary)' }}>Ventana</span>
+          <select className="form-input w-[120px]" value={config.max_days_ahead} onChange={e => saveConfig({ max_days_ahead: parseInt(e.target.value) })}>
+            {[7, 14, 21, 30, 45, 60, 90].map(d => (
+              <option key={d} value={d}>{d} días</option>
+            ))}
+          </select>
+          <span className="text-sm" style={{ color: 'var(--text-tertiary)' }}>hacia adelante</span>
+        </div>
       </div>
 
       {/* Working Days */}
       <div className="rounded-[16px] border p-7 md:col-span-2" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
-        <h2 className="font-display text-lg font-semibold mb-5 flex items-center gap-2">📆 Días laborales</h2>
+        <h2 className="text-lg font-semibold mb-5 flex items-center gap-2">📆 Días laborales</h2>
         <div className="flex gap-2 flex-wrap">
           {DAYS_ES.map((d, i) => (
             <div key={i}
@@ -373,7 +392,7 @@ export default function SettingsPage() {
       {/* Event Types CRUD */}
       <div className="rounded-[16px] border p-7 md:col-span-2" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
         <div className="flex items-center justify-between mb-5">
-          <h2 className="font-display text-lg font-semibold flex items-center gap-2">📋 Tipos de reunión</h2>
+          <h2 className="text-lg font-semibold flex items-center gap-2">📋 Tipos de reunión</h2>
           <button onClick={startCreating}
             className="btn-primary text-sm !py-2.5 !px-5">
             + Nuevo tipo
@@ -407,31 +426,31 @@ export default function SettingsPage() {
               <div className="flex items-center gap-1.5">
                 <button onClick={() => toggleActive(et)}
                   className="px-3 py-1.5 rounded-[8px] text-xs font-semibold cursor-pointer border bg-transparent transition-all"
-                  style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)', fontFamily: 'DM Sans' }}>
+                  style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)', fontFamily: 'inherit' }}>
                   {et.is_active ? 'Desactivar' : 'Activar'}
                 </button>
                 <button onClick={() => startEditing(et)}
                   className="px-3 py-1.5 rounded-[8px] text-xs font-semibold cursor-pointer border-2 bg-transparent transition-all"
-                  style={{ borderColor: 'var(--accent)', color: 'var(--accent)', fontFamily: 'DM Sans' }}>
+                  style={{ borderColor: 'var(--accent)', color: 'var(--accent)', fontFamily: 'inherit' }}>
                   Editar
                 </button>
                 {deleteConfirm === et.id ? (
                   <div className="flex items-center gap-1">
                     <button onClick={() => deleteEventType(et.id)}
                       className="px-3 py-1.5 rounded-[8px] text-xs font-semibold cursor-pointer border-none text-white"
-                      style={{ background: '#C25050', fontFamily: 'DM Sans' }}>
+                      style={{ background: '#C25050', fontFamily: 'inherit' }}>
                       Confirmar
                     </button>
                     <button onClick={() => setDeleteConfirm(null)}
                       className="px-3 py-1.5 rounded-[8px] text-xs font-semibold cursor-pointer border bg-transparent"
-                      style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)', fontFamily: 'DM Sans' }}>
+                      style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)', fontFamily: 'inherit' }}>
                       No
                     </button>
                   </div>
                 ) : (
                   <button onClick={() => setDeleteConfirm(et.id)}
                     className="px-3 py-1.5 rounded-[8px] text-xs font-semibold cursor-pointer border bg-transparent transition-all"
-                    style={{ borderColor: '#E8B4B4', color: '#C25050', fontFamily: 'DM Sans' }}>
+                    style={{ borderColor: '#E8B4B4', color: '#C25050', fontFamily: 'inherit' }}>
                     Eliminar
                   </button>
                 )}
@@ -443,7 +462,7 @@ export default function SettingsPage() {
 
       {/* Google Calendar */}
       <div className="rounded-[16px] border p-7 md:col-span-2" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
-        <h2 className="font-display text-lg font-semibold mb-3 flex items-center gap-2">📅 Google Calendar</h2>
+        <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">📅 Google Calendar</h2>
         {gcalConnected ? (
           <div className="flex items-center gap-3">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-[10px] text-sm font-semibold" style={{ background: 'var(--success-light)', color: 'var(--success)' }}>
@@ -464,7 +483,7 @@ export default function SettingsPage() {
 
       {/* Share Links */}
       <div className="rounded-[16px] border p-7 md:col-span-2" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
-        <h2 className="font-display text-lg font-semibold mb-3 flex items-center gap-2">🔗 Links para compartir</h2>
+        <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">🔗 Links para compartir</h2>
         <p className="text-sm mb-5" style={{ color: 'var(--text-secondary)' }}>Cada tipo de reunión tiene su propio link directo.</p>
 
         <div className="mb-4">
@@ -472,7 +491,7 @@ export default function SettingsPage() {
           <div className="flex items-center gap-3 px-4 py-3 rounded-[12px]" style={{ background: 'var(--surface-alt)' }}>
             <div className="flex-1 text-sm font-mono truncate">{siteUrl}</div>
             <button onClick={() => copyLink('', 'general')}
-              className="px-4 py-2 rounded-[8px] text-xs font-semibold text-white border-none cursor-pointer" style={{ background: 'var(--accent)', fontFamily: 'DM Sans' }}>
+              className="px-4 py-2 rounded-[8px] text-xs font-semibold text-white border-none cursor-pointer" style={{ background: 'var(--accent)', fontFamily: 'inherit' }}>
               {copiedId === 'general' ? '✓ Copiado' : 'Copiar'}
             </button>
           </div>
@@ -488,7 +507,7 @@ export default function SettingsPage() {
                 <div className="text-xs font-mono truncate" style={{ color: 'var(--text-secondary)' }}>{siteUrl}/{et.id}</div>
               </div>
               <button onClick={() => copyLink(`/${et.id}`, et.id)}
-                className="px-4 py-2 rounded-[8px] text-xs font-semibold text-white border-none cursor-pointer whitespace-nowrap" style={{ background: 'var(--accent)', fontFamily: 'DM Sans' }}>
+                className="px-4 py-2 rounded-[8px] text-xs font-semibold text-white border-none cursor-pointer whitespace-nowrap" style={{ background: 'var(--accent)', fontFamily: 'inherit' }}>
                 {copiedId === et.id ? '✓ Copiado' : 'Copiar'}
               </button>
             </div>

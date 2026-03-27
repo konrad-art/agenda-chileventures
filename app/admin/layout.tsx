@@ -43,9 +43,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {/* Admin Top Bar */}
       <div className="sticky top-0 z-50 flex items-center justify-between px-8 py-4 border-b" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-[10px] flex items-center justify-center text-white font-display font-bold text-lg" style={{ background: 'var(--accent)' }}>K</div>
+          <div className="w-9 h-9 rounded-[10px] flex items-center justify-center text-white font-bold text-lg" style={{ background: 'var(--accent)' }}>K</div>
           <div>
-            <div className="font-display font-semibold text-lg">Agenda</div>
+            <div className="font-semibold text-lg">Agenda</div>
             <div className="text-xs uppercase tracking-wider" style={{ color: 'var(--text-tertiary)' }}>Admin</div>
           </div>
         </div>
