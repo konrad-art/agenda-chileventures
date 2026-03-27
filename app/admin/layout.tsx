@@ -59,6 +59,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             onClick={() => router.push('/admin/settings')}
             className={`px-5 py-2 rounded-[9px] text-sm font-medium border-none cursor-pointer transition-all ${pathname === '/admin/settings' ? 'bg-[var(--surface)] shadow-sm text-[var(--text)]' : 'bg-transparent text-[var(--text-secondary)]'}`}
           >Config</button>
+          <button
+            onClick={() => router.push('/admin/logs')}
+            className={`px-5 py-2 rounded-[9px] text-sm font-medium border-none cursor-pointer transition-all ${pathname === '/admin/logs' ? 'bg-[var(--surface)] shadow-sm text-[var(--text)]' : 'bg-transparent text-[var(--text-secondary)]'}`}
+          >Logs</button>
           <button onClick={handleLogout}
             className="px-5 py-2 rounded-[9px] text-sm font-medium border-none cursor-pointer bg-transparent text-[var(--text-secondary)] hover:text-[var(--text)]"
           >Salir</button>
