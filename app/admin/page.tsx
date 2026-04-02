@@ -37,16 +37,18 @@ export default function AdminPage() {
   return (
     <div>
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
-        <h1 className="text-xl sm:text-2xl font-bold" style={{ letterSpacing: '-0.3px' }}>Reservas</h1>
-        <div className="flex gap-0.5 sm:gap-1 p-1 rounded-[12px]" style={{ background: 'var(--surface-alt)' }}>
+        <div className="flex items-center gap-3">
+          <h1 className="text-xl sm:text-2xl font-bold" style={{ letterSpacing: '-0.3px' }}>Reservas</h1>
+          <a href={process.env.NEXT_PUBLIC_SITE_URL || 'https://agenda-chileventures.vercel.app'} target="_blank" rel="noopener noreferrer"
+            className="btn-sm no-underline inline-flex items-center gap-1.5 !py-2 !px-4">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Agendar
+          </a>
+        </div>
+        <div className="pill-tabs">
           {(['upcoming', 'past', 'cancelled'] as const).map(f => (
             <button key={f} onClick={() => setFilter(f)}
-              className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-[9px] text-xs sm:text-sm font-medium border-none cursor-pointer transition-all duration-200 ${
-                filter === f
-                  ? 'bg-[var(--surface)] text-[var(--text)]'
-                  : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text)]'
-              }`}
-              style={filter === f ? { boxShadow: 'var(--shadow-sm)' } : {}}>
+              className={`pill-tab ${filter === f ? 'active' : ''}`}>
               {f === 'upcoming' ? 'Próximas' : f === 'past' ? 'Pasadas' : 'Canceladas'}
             </button>
           ))}
@@ -60,7 +62,7 @@ export default function AdminPage() {
           ))}
         </div>
       ) : bookings.length === 0 ? (
-        <div className="rounded-[20px] border p-12 text-center animate-scale-in" style={{ background: 'var(--surface)', borderColor: 'var(--border)', boxShadow: 'var(--shadow-sm)' }}>
+        <div className="card p-12 text-center animate-scale-in">
           <div className="w-16 h-16 rounded-[18px] flex items-center justify-center text-3xl mx-auto mb-4" style={{ background: 'var(--surface-alt)' }}>
             <span style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.06))' }}>&#128237;</span>
           </div>
@@ -72,8 +74,7 @@ export default function AdminPage() {
             const dt = new Date(b.datetime)
             const et = b.event_types as any
             return (
-              <div key={b.id} className="event-card rounded-[16px] border p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-5"
-                style={{ background: 'var(--surface)', borderColor: 'var(--border)', boxShadow: 'var(--shadow-sm)' }}>
+              <div key={b.id} className="card p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-5 transition-all duration-200 hover:shadow-md">
                 <div className="flex items-center sm:block text-center min-w-[52px] gap-3 sm:gap-0">
                   <div className="text-xs font-semibold uppercase" style={{ color: 'var(--text-tertiary)' }}>
                     {MONTHS_ES[dt.getMonth()].slice(0, 3)}
@@ -101,8 +102,8 @@ export default function AdminPage() {
 
                   {filter === 'upcoming' && (
                     <button onClick={() => handleCancel(b.id)}
-                      className="px-3 py-1.5 rounded-[10px] text-xs font-semibold cursor-pointer border transition-all duration-200 hover:bg-[#fde8e8]"
-                      style={{ background: '#FFF5F5', color: '#C25050', borderColor: '#E8B4B4', fontFamily: 'inherit' }}>
+                      className="btn-sm hover:!bg-[var(--error-light)]"
+                      style={{ background: 'var(--error-light)', color: 'var(--error)', borderColor: 'var(--error-border)', fontFamily: 'inherit' }}>
                       Cancelar
                     </button>
                   )}

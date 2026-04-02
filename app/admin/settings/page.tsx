@@ -321,8 +321,8 @@ export default function SettingsPage() {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
       {/* Profile */}
-      <div className="rounded-[20px] border p-5 sm:p-7" style={{ background: 'var(--surface)', borderColor: 'var(--border)', boxShadow: 'var(--shadow-sm)' }}>
-        <h2 className="text-lg font-semibold mb-5 flex items-center gap-2">👤 Perfil</h2>
+      <div className="card p-5 sm:p-7">
+        <h2 className="text-lg font-semibold mb-5 flex items-center gap-2">&#128100; Perfil</h2>
         <div className="mb-4">
           <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-secondary)' }}>Nombre</label>
           <input className="form-input" value={config.name} onChange={e => saveConfig({ name: e.target.value })} />
@@ -338,51 +338,37 @@ export default function SettingsPage() {
       </div>
 
       {/* Schedule */}
-      <div className="rounded-[20px] border p-5 sm:p-7" style={{ background: 'var(--surface)', borderColor: 'var(--border)', boxShadow: 'var(--shadow-sm)' }}>
-        <h2 className="text-lg font-semibold mb-5 flex items-center gap-2">⏰ Horario</h2>
-        <div className="flex items-center gap-3 mb-3">
-          <span className="text-sm min-w-[60px]" style={{ color: 'var(--text-secondary)' }}>Desde</span>
-          <select className="form-input w-[120px]" value={config.start_hour} onChange={e => saveConfig({ start_hour: parseInt(e.target.value) })}>
-            {Array.from({ length: 24 }, (_, i) => (
-              <option key={i} value={i}>{String(i).padStart(2, '0')}:00</option>
-            ))}
-          </select>
-        </div>
-        <div className="flex items-center gap-3 mb-3">
-          <span className="text-sm min-w-[60px]" style={{ color: 'var(--text-secondary)' }}>Hasta</span>
-          <select className="form-input w-[120px]" value={config.end_hour} onChange={e => saveConfig({ end_hour: parseInt(e.target.value) })}>
-            {Array.from({ length: 24 }, (_, i) => (
-              <option key={i} value={i}>{String(i).padStart(2, '0')}:00</option>
-            ))}
-          </select>
-        </div>
-        <div className="flex items-center gap-3 mb-3">
-          <span className="text-sm min-w-[60px]" style={{ color: 'var(--text-secondary)' }}>Buffer</span>
-          <select className="form-input w-[120px]" value={config.buffer_minutes} onChange={e => saveConfig({ buffer_minutes: parseInt(e.target.value) })}>
-            {[0, 5, 10, 15, 20, 30, 45, 60].map(m => (
-              <option key={m} value={m}>{m} min</option>
-            ))}
-          </select>
-          <span className="text-sm" style={{ color: 'var(--text-tertiary)' }}>entre reuniones</span>
-        </div>
-        <div className="flex items-center gap-3 mb-3">
-          <span className="text-sm min-w-[60px]" style={{ color: 'var(--text-secondary)' }}>Ventana</span>
-          <select className="form-input w-[120px]" value={config.max_days_ahead} onChange={e => saveConfig({ max_days_ahead: parseInt(e.target.value) })}>
-            {[7, 14, 21, 30, 45, 60, 90].map(d => (
-              <option key={d} value={d}>{d} días</option>
-            ))}
-          </select>
-          <span className="text-sm" style={{ color: 'var(--text-tertiary)' }}>hacia adelante</span>
+      <div className="card p-5 sm:p-7">
+        <h2 className="text-lg font-semibold mb-5 flex items-center gap-2">&#9200; Horario</h2>
+        <div className="flex flex-col gap-4">
+          {[
+            { label: 'Desde', value: config.start_hour, key: 'start_hour', options: Array.from({ length: 24 }, (_, i) => ({ v: i, l: `${String(i).padStart(2, '0')}:00` })) },
+            { label: 'Hasta', value: config.end_hour, key: 'end_hour', options: Array.from({ length: 24 }, (_, i) => ({ v: i, l: `${String(i).padStart(2, '0')}:00` })) },
+            { label: 'Buffer', value: config.buffer_minutes, key: 'buffer_minutes', options: [0, 5, 10, 15, 20, 30, 45, 60].map(m => ({ v: m, l: `${m} min` })), hint: 'entre reuniones' },
+            { label: 'Ventana', value: config.max_days_ahead, key: 'max_days_ahead', options: [7, 14, 21, 30, 45, 60, 90].map(d => ({ v: d, l: `${d} días` })), hint: 'hacia adelante' },
+          ].map(row => (
+            <div key={row.key} className="flex items-center gap-3">
+              <span className="text-sm font-medium w-[72px] shrink-0" style={{ color: 'var(--text-secondary)' }}>{row.label}</span>
+              <select className="form-input !w-[130px] shrink-0" value={row.value} onChange={e => saveConfig({ [row.key]: parseInt(e.target.value) } as any)}>
+                {row.options.map(o => <option key={o.v} value={o.v}>{o.l}</option>)}
+              </select>
+              {row.hint && <span className="text-xs hidden sm:inline" style={{ color: 'var(--text-tertiary)' }}>{row.hint}</span>}
+            </div>
+          ))}
         </div>
       </div>
 
       {/* Working Days */}
-      <div className="rounded-[16px] border p-7 md:col-span-2" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
-        <h2 className="text-lg font-semibold mb-5 flex items-center gap-2">📆 Días laborales</h2>
+      <div className="card p-5 sm:p-7 md:col-span-2">
+        <h2 className="text-lg font-semibold mb-5 flex items-center gap-2">&#128198; Días laborales</h2>
         <div className="flex gap-2 flex-wrap">
           {DAYS_ES.map((d, i) => (
             <div key={i}
-              className={`px-4 py-2 rounded-[10px] border-2 text-sm font-semibold cursor-pointer transition-all ${config.working_days.includes(i) ? 'bg-[var(--accent)] border-[var(--accent)] text-white' : 'bg-[var(--surface)] border-[var(--border)] text-[var(--text-secondary)]'}`}
+              className={`px-4 py-2.5 rounded-[12px] border text-sm font-semibold cursor-pointer transition-all duration-200 ${config.working_days.includes(i) ? 'text-white' : 'text-[var(--text-secondary)] hover:border-[var(--border-strong)]'}`}
+              style={config.working_days.includes(i)
+                ? { background: 'linear-gradient(180deg, #3498d4 0%, var(--accent) 100%)', borderColor: 'var(--accent)', boxShadow: 'var(--shadow-accent)' }
+                : { background: 'var(--surface)', borderColor: 'var(--border)' }
+              }
               onClick={() => {
                 const wd = config.working_days.includes(i)
                   ? config.working_days.filter(x => x !== i)
@@ -396,68 +382,78 @@ export default function SettingsPage() {
       </div>
 
       {/* Event Types CRUD */}
-      <div className="rounded-[16px] border p-7 md:col-span-2" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+      <div className="card p-5 sm:p-7 md:col-span-2">
         <div className="flex items-center justify-between mb-5">
-          <h2 className="text-lg font-semibold flex items-center gap-2">📋 Tipos de reunión</h2>
-          <button onClick={startCreating}
-            className="btn-primary text-sm !py-2.5 !px-5">
+          <h2 className="text-lg font-semibold flex items-center gap-2">&#128203; Tipos de reunión</h2>
+          <button onClick={startCreating} className="btn-primary text-sm !py-2.5 !px-5">
             + Nuevo tipo
           </button>
         </div>
 
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-3">
           {eventTypes.map(et => (
-            <div key={et.id} className="event-card flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 px-4 sm:px-5 py-4 rounded-[14px] border"
-              style={{ borderColor: 'var(--border)', background: !et.is_active ? 'var(--surface-alt)' : 'var(--surface)', boxShadow: 'var(--shadow-sm)' }}>
+            <div key={et.id} className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 p-4 sm:p-5 rounded-[16px] border transition-all duration-200 hover:shadow-md"
+              style={{ borderColor: 'var(--border)', background: !et.is_active ? 'var(--surface-alt)' : 'var(--surface)' }}>
 
               <div className="flex items-center gap-3 flex-1 min-w-0">
-                <span className="text-2xl shrink-0">{et.emoji}</span>
+                <div className="w-11 h-11 rounded-[12px] flex items-center justify-center text-xl shrink-0" style={{ background: 'var(--surface-alt)' }}>
+                  {et.emoji}
+                </div>
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-semibold">{et.name}</span>
+                    <span className="font-semibold text-[15px]">{et.name}</span>
                     <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: 'var(--surface-alt)', color: 'var(--text-secondary)' }}>
                       {et.duration} min
                     </span>
                     {!et.is_active && (
-                      <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: '#FFF5F5', color: '#C25050' }}>
+                      <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: 'var(--error-light)', color: 'var(--error)' }}>
                         Inactivo
                       </span>
                     )}
                   </div>
                   <div className="text-xs mt-0.5 truncate" style={{ color: 'var(--text-tertiary)' }}>
-                    {siteUrl}/{et.id} &middot; {et.extra_fields.length} campo{et.extra_fields.length !== 1 ? 's' : ''} extra
+                    /{et.id} &middot; {et.extra_fields.length} campo{et.extra_fields.length !== 1 ? 's' : ''} extra
                   </div>
                 </div>
               </div>
 
               <div className="flex items-center gap-1.5 flex-wrap">
-                <button onClick={() => toggleActive(et)}
-                  className="px-3 py-1.5 rounded-[8px] text-xs font-semibold cursor-pointer border bg-transparent transition-all"
-                  style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)', fontFamily: 'inherit' }}>
+                {/* Visit link */}
+                <a href={`${siteUrl}/${et.id}`} target="_blank" rel="noopener noreferrer"
+                  className="btn-sm no-underline inline-flex items-center gap-1"
+                  title="Abrir para agendar">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                  Abrir
+                </a>
+                {/* Copy link */}
+                <button onClick={() => copyLink(`/${et.id}`, et.id)}
+                  className="btn-sm inline-flex items-center gap-1"
+                  title="Copiar link">
+                  {copiedId === et.id ? (
+                    <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--success)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Copiado</>
+                  ) : (
+                    <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copiar</>
+                  )}
+                </button>
+                <div className="w-px h-6 mx-1 hidden sm:block" style={{ background: 'var(--border)' }} />
+                <button onClick={() => toggleActive(et)} className="btn-sm">
                   {et.is_active ? 'Desactivar' : 'Activar'}
                 </button>
                 <button onClick={() => startEditing(et)}
-                  className="px-3 py-1.5 rounded-[8px] text-xs font-semibold cursor-pointer border-2 bg-transparent transition-all"
-                  style={{ borderColor: 'var(--accent)', color: 'var(--accent)', fontFamily: 'inherit' }}>
+                  className="btn-sm" style={{ borderColor: 'var(--accent)', color: 'var(--accent)' }}>
                   Editar
                 </button>
                 {deleteConfirm === et.id ? (
                   <div className="flex items-center gap-1">
                     <button onClick={() => deleteEventType(et.id)}
-                      className="px-3 py-1.5 rounded-[8px] text-xs font-semibold cursor-pointer border-none text-white"
-                      style={{ background: '#C25050', fontFamily: 'inherit' }}>
+                      className="btn-sm !bg-[var(--error)] !text-white !border-[var(--error)]">
                       Confirmar
                     </button>
-                    <button onClick={() => setDeleteConfirm(null)}
-                      className="px-3 py-1.5 rounded-[8px] text-xs font-semibold cursor-pointer border bg-transparent"
-                      style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)', fontFamily: 'inherit' }}>
-                      No
-                    </button>
+                    <button onClick={() => setDeleteConfirm(null)} className="btn-sm">No</button>
                   </div>
                 ) : (
                   <button onClick={() => setDeleteConfirm(et.id)}
-                    className="px-3 py-1.5 rounded-[8px] text-xs font-semibold cursor-pointer border bg-transparent transition-all"
-                    style={{ borderColor: '#E8B4B4', color: '#C25050', fontFamily: 'inherit' }}>
+                    className="btn-sm" style={{ borderColor: 'var(--error-border)', color: 'var(--error)' }}>
                     Eliminar
                   </button>
                 )}
@@ -468,12 +464,13 @@ export default function SettingsPage() {
       </div>
 
       {/* Google Calendar */}
-      <div className="rounded-[16px] border p-7 md:col-span-2" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
-        <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">📅 Google Calendar</h2>
+      <div className="card p-5 sm:p-7 md:col-span-2">
+        <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">&#128197; Google Calendar</h2>
         {gcalConnected ? (
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-[10px] text-sm font-semibold" style={{ background: 'var(--success-light)', color: 'var(--success)' }}>
-              ✓ Conectado
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              Conectado
             </div>
             <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Tu calendario se usa para verificar disponibilidad y crear eventos</span>
           </div>
@@ -486,40 +483,6 @@ export default function SettingsPage() {
             </a>
           </div>
         )}
-      </div>
-
-      {/* Share Links */}
-      <div className="rounded-[16px] border p-7 md:col-span-2" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
-        <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">🔗 Links para compartir</h2>
-        <p className="text-sm mb-5" style={{ color: 'var(--text-secondary)' }}>Cada tipo de reunión tiene su propio link directo.</p>
-
-        <div className="mb-4">
-          <div className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--text-tertiary)' }}>Página general</div>
-          <div className="flex items-center gap-3 px-4 py-3 rounded-[12px]" style={{ background: 'var(--surface-alt)' }}>
-            <div className="flex-1 text-sm font-mono truncate">{siteUrl}</div>
-            <button onClick={() => copyLink('', 'general')}
-              className="px-4 py-2 rounded-[8px] text-xs font-semibold text-white border-none cursor-pointer" style={{ background: 'var(--accent)', fontFamily: 'inherit' }}>
-              {copiedId === 'general' ? '✓ Copiado' : 'Copiar'}
-            </button>
-          </div>
-        </div>
-
-        <div className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--text-tertiary)' }}>Links por tipo</div>
-        <div className="flex flex-col gap-2">
-          {eventTypes.filter(et => et.is_active).map(et => (
-            <div key={et.id} className="flex items-center gap-3 px-4 py-3 rounded-[12px]" style={{ background: 'var(--surface-alt)' }}>
-              <span className="text-lg">{et.emoji}</span>
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-semibold">{et.name} <span className="font-normal" style={{ color: 'var(--text-tertiary)' }}>· {et.duration} min</span></div>
-                <div className="text-xs font-mono truncate" style={{ color: 'var(--text-secondary)' }}>{siteUrl}/{et.id}</div>
-              </div>
-              <button onClick={() => copyLink(`/${et.id}`, et.id)}
-                className="px-4 py-2 rounded-[8px] text-xs font-semibold text-white border-none cursor-pointer whitespace-nowrap" style={{ background: 'var(--accent)', fontFamily: 'inherit' }}>
-                {copiedId === et.id ? '✓ Copiado' : 'Copiar'}
-              </button>
-            </div>
-          ))}
-        </div>
       </div>
     </div>
   )
