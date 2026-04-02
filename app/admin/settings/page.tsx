@@ -167,18 +167,24 @@ export default function SettingsPage() {
   }
 
   if (loading || !config) {
-    return <div className="text-center py-12" style={{ color: 'var(--text-tertiary)' }}>Cargando...</div>
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 stagger-children">
+        {[1, 2].map(i => <div key={i} className="skeleton h-[220px] rounded-[20px]" />)}
+        <div className="skeleton h-[80px] rounded-[20px] md:col-span-2" />
+        <div className="skeleton h-[200px] rounded-[20px] md:col-span-2" />
+      </div>
+    )
   }
 
   // --- Event Type Editor Modal ---
   if (editingType) {
     return (
-      <div>
-        <button onClick={cancelEditing} className="flex items-center gap-2 text-sm font-semibold mb-6 cursor-pointer bg-transparent border-none" style={{ color: 'var(--text-secondary)', fontFamily: 'inherit' }}>
-          ← Volver a configuración
+      <div className="animate-slide-left">
+        <button onClick={cancelEditing} className="flex items-center gap-2 text-sm font-semibold mb-6 cursor-pointer bg-transparent border-none group" style={{ color: 'var(--text-secondary)', fontFamily: 'inherit' }}>
+          <span className="inline-block transition-transform duration-200 group-hover:-translate-x-1">&larr;</span> Volver a configuración
         </button>
 
-        <div className="rounded-[16px] border p-7" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+        <div className="rounded-[20px] border p-5 sm:p-7" style={{ background: 'var(--surface)', borderColor: 'var(--border)', boxShadow: 'var(--shadow-sm)' }}>
           <h2 className="text-xl font-semibold mb-6">
             {isNewType ? 'Crear tipo de reunión' : `Editar: ${editingType.name}`}
           </h2>
@@ -313,9 +319,9 @@ export default function SettingsPage() {
 
   // --- Main Settings View ---
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
       {/* Profile */}
-      <div className="rounded-[16px] border p-7" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+      <div className="rounded-[20px] border p-5 sm:p-7" style={{ background: 'var(--surface)', borderColor: 'var(--border)', boxShadow: 'var(--shadow-sm)' }}>
         <h2 className="text-lg font-semibold mb-5 flex items-center gap-2">👤 Perfil</h2>
         <div className="mb-4">
           <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-secondary)' }}>Nombre</label>
@@ -332,7 +338,7 @@ export default function SettingsPage() {
       </div>
 
       {/* Schedule */}
-      <div className="rounded-[16px] border p-7" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+      <div className="rounded-[20px] border p-5 sm:p-7" style={{ background: 'var(--surface)', borderColor: 'var(--border)', boxShadow: 'var(--shadow-sm)' }}>
         <h2 className="text-lg font-semibold mb-5 flex items-center gap-2">⏰ Horario</h2>
         <div className="flex items-center gap-3 mb-3">
           <span className="text-sm min-w-[60px]" style={{ color: 'var(--text-secondary)' }}>Desde</span>
@@ -401,29 +407,30 @@ export default function SettingsPage() {
 
         <div className="flex flex-col gap-2">
           {eventTypes.map(et => (
-            <div key={et.id} className="flex items-center gap-4 px-5 py-4 rounded-[12px] border transition-all hover:shadow-sm"
-              style={{ borderColor: 'var(--border)', background: !et.is_active ? 'var(--surface-alt)' : 'var(--surface)' }}>
+            <div key={et.id} className="event-card flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 px-4 sm:px-5 py-4 rounded-[14px] border"
+              style={{ borderColor: 'var(--border)', background: !et.is_active ? 'var(--surface-alt)' : 'var(--surface)', boxShadow: 'var(--shadow-sm)' }}>
 
-              <span className="text-2xl">{et.emoji}</span>
-
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold">{et.name}</span>
-                  <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: 'var(--surface-alt)', color: 'var(--text-secondary)' }}>
-                    {et.duration} min
-                  </span>
-                  {!et.is_active && (
-                    <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: '#FFF5F5', color: '#C25050' }}>
-                      Inactivo
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <span className="text-2xl shrink-0">{et.emoji}</span>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-semibold">{et.name}</span>
+                    <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: 'var(--surface-alt)', color: 'var(--text-secondary)' }}>
+                      {et.duration} min
                     </span>
-                  )}
-                </div>
-                <div className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>
-                  {siteUrl}/{et.id} · {et.extra_fields.length} campo{et.extra_fields.length !== 1 ? 's' : ''} extra
+                    {!et.is_active && (
+                      <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: '#FFF5F5', color: '#C25050' }}>
+                        Inactivo
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-xs mt-0.5 truncate" style={{ color: 'var(--text-tertiary)' }}>
+                    {siteUrl}/{et.id} &middot; {et.extra_fields.length} campo{et.extra_fields.length !== 1 ? 's' : ''} extra
+                  </div>
                 </div>
               </div>
 
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 flex-wrap">
                 <button onClick={() => toggleActive(et)}
                   className="px-3 py-1.5 rounded-[8px] text-xs font-semibold cursor-pointer border bg-transparent transition-all"
                   style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)', fontFamily: 'inherit' }}>

@@ -33,21 +33,21 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg)' }}>
-      <div className="w-full max-w-sm">
+    <div className="min-h-screen flex items-center justify-center px-4" style={{ background: 'var(--bg)' }}>
+      <div className="w-full max-w-sm animate-scale-in">
         {/* Logo */}
         <div className="flex justify-center mb-8">
           <CVLogoFull height={20} dark={true} />
         </div>
 
-        <div className="p-8 rounded-[16px] border" style={{ background: 'var(--surface)', borderColor: 'var(--border)', boxShadow: '0 4px 24px rgba(13,27,42,0.08)' }}>
+        <div className="glass-card p-6 sm:p-8 rounded-[20px]" style={{ boxShadow: 'var(--shadow-lg)' }}>
           <div className="text-center mb-7">
             <div className="font-bold text-xl" style={{ letterSpacing: '-0.3px' }}>Admin Login</div>
             <div className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>Panel de gestión de agenda</div>
           </div>
 
           {error && (
-            <div className="text-sm font-medium px-4 py-3 rounded-[8px] mb-4" style={{ background: '#FFF5F5', color: '#C25050', border: '1px solid #E8B4B4' }}>
+            <div className="text-sm font-medium px-4 py-3 rounded-[12px] mb-4 animate-scale-in" style={{ background: '#FFF5F5', color: '#C25050', border: '1px solid #E8B4B4' }}>
               {error}
             </div>
           )}
@@ -55,7 +55,7 @@ export default function LoginPage() {
           <button
             onClick={handleGoogleLogin}
             disabled={loading}
-            className="w-full flex items-center justify-center gap-3 px-4 py-3.5 rounded-[12px] text-[15px] font-semibold cursor-pointer border-2 transition-all hover:shadow-md"
+            className="w-full flex items-center justify-center gap-3 px-4 py-3.5 rounded-[14px] text-[15px] font-semibold cursor-pointer border-2 transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98]"
             style={{
               background: 'var(--surface)',
               borderColor: 'var(--border)',
@@ -78,7 +78,7 @@ export default function LoginPage() {
         </div>
 
         <div className="text-center mt-6 text-xs" style={{ color: 'var(--text-tertiary)' }}>
-          Chile Ventures · Santiago, Chile
+          Chile Ventures &middot; Santiago, Chile
         </div>
       </div>
     </div>

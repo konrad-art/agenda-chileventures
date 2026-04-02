@@ -25,7 +25,7 @@ function isSlotBusy(busySlots: BusySlot[], date: Date, slot: TimeSlot, duration:
 /* ─── Skeleton Components ─── */
 function SkeletonSidebar() {
   return (
-    <div className="p-8 border-r flex flex-col gap-6" style={{ borderColor: 'var(--border)' }}>
+    <div className="p-5 sm:p-8 border-b md:border-b-0 md:border-r flex flex-col gap-4 sm:gap-6" style={{ borderColor: 'var(--border)' }}>
       <div className="skeleton w-[52px] h-[52px] rounded-[14px]" />
       <div>
         <div className="skeleton h-5 w-[140px] mb-2" />
@@ -45,7 +45,7 @@ function SkeletonSidebar() {
 
 function SkeletonCalendar() {
   return (
-    <div className="p-8 animate-fade-in">
+    <div className="p-5 sm:p-8 animate-fade-in">
       <div className="flex items-center justify-between mb-5">
         <div className="skeleton h-6 w-[160px] rounded-lg" />
         <div className="flex gap-1.5">
@@ -294,7 +294,7 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
         </div>
         {/* Skeleton Content */}
         <div className="max-w-[1100px] mx-auto px-6 py-8">
-          <div className="grid md:grid-cols-[300px_1fr] rounded-[24px] border overflow-hidden" style={{ background: 'var(--surface)', borderColor: 'var(--border)', boxShadow: 'var(--shadow-lg)' }}>
+          <div className="grid grid-cols-1 md:grid-cols-[280px_1fr] rounded-[20px] sm:rounded-[24px] border" style={{ background: 'var(--surface)', borderColor: 'var(--border)', boxShadow: 'var(--shadow-lg)' }}>
             <SkeletonSidebar />
             <SkeletonCalendar />
           </div>
@@ -312,28 +312,28 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
       {/* ─── Floating Navigation Bar ─── */}
-      <div className="sticky top-0 z-50 floating-nav mx-4 mt-4 rounded-2xl px-6 py-3.5 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <CVLogoFull height={18} dark={true} />
-          <div className="h-5 w-px" style={{ background: 'var(--border)' }} />
-          <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--text-tertiary)' }}>Agenda</div>
+      <div className="sticky top-0 z-50 floating-nav mx-2 sm:mx-4 mt-2 sm:mt-4 rounded-2xl px-4 sm:px-6 py-3 sm:py-3.5 flex items-center justify-between">
+        <div className="flex items-center gap-3 sm:gap-4">
+          <CVLogoFull height={16} dark={true} />
+          <div className="h-5 w-px hidden sm:block" style={{ background: 'var(--border)' }} />
+          <div className="text-xs font-semibold uppercase tracking-widest hidden sm:block" style={{ color: 'var(--text-tertiary)' }}>Agenda</div>
         </div>
       </div>
 
       {/* ─── Main Content ─── */}
-      <div className="max-w-[1100px] mx-auto px-6 py-8">
-        <div className="grid md:grid-cols-[300px_1fr] rounded-[24px] border overflow-hidden" style={{ background: 'var(--surface)', borderColor: 'var(--border)', boxShadow: 'var(--shadow-lg)' }}>
+      <div className="max-w-[1100px] mx-auto px-3 sm:px-6 py-4 sm:py-8">
+        <div className="grid grid-cols-1 md:grid-cols-[280px_1fr] rounded-[20px] sm:rounded-[24px] border" style={{ background: 'var(--surface)', borderColor: 'var(--border)', boxShadow: 'var(--shadow-lg)' }}>
 
           {/* ─── Sidebar ─── */}
-          <div className="p-8 border-r flex flex-col gap-6" style={{ borderColor: 'var(--border)' }}>
-            <CVMark size={52} />
+          <div className="p-5 sm:p-8 border-b md:border-b-0 md:border-r flex flex-col gap-4 sm:gap-6" style={{ borderColor: 'var(--border)' }}>
+            <CVMark size={44} />
             <div>
               <div className="font-bold text-[17px]" style={{ letterSpacing: '-0.3px' }}>{config.name}</div>
               <div className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>{config.title}</div>
               <div className="text-xs mt-0.5 font-semibold uppercase tracking-wider" style={{ color: 'var(--accent)' }}>{config.org}</div>
             </div>
 
-            <div className="h-px" style={{ background: 'var(--border)' }} />
+            <div className="h-px hidden md:block" style={{ background: 'var(--border)' }} />
 
             {isReschedule && (
               <div className="px-4 py-3 rounded-[14px] text-sm font-semibold glass-card" style={{ color: 'var(--accent)', borderColor: 'rgba(45,140,194,0.2)' }}>
@@ -345,11 +345,11 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
               {isReschedule ? 'Reunión' : filterType ? 'Reunión seleccionada' : 'Tipo de reunión'}
             </div>
 
-            <div className="flex flex-col gap-2.5 stagger-children">
+            <div className="flex md:flex-col gap-2.5 overflow-x-auto md:overflow-x-visible pb-2 md:pb-0 stagger-children">
               {displayTypes.map((et) => (
                 <div
                   key={et.id}
-                  className={`event-card ${isReschedule ? 'event-card-locked' : ''} flex items-center gap-3.5 p-4 rounded-[16px] border-2 ${isReschedule ? '' : 'cursor-pointer'} ${selectedType?.id === et.id ? 'border-[var(--accent)]' : 'border-[var(--border)] hover:border-[var(--border-strong)]'}`}
+                  className={`event-card ${isReschedule ? 'event-card-locked' : ''} flex items-center gap-3.5 p-4 rounded-[16px] border-2 min-w-[200px] md:min-w-0 shrink-0 md:shrink ${isReschedule ? '' : 'cursor-pointer'} ${selectedType?.id === et.id ? 'border-[var(--accent)]' : 'border-[var(--border)] hover:border-[var(--border-strong)]'}`}
                   style={selectedType?.id === et.id ? { background: 'var(--accent-light)', boxShadow: '0 4px 16px rgba(45,140,194,0.08)' } : {}}
                   onClick={() => {
                     if (isReschedule) return
@@ -378,7 +378,7 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
           </div>
 
           {/* ─── Main Area ─── */}
-          <div className="p-8 flex flex-col min-h-[520px]">
+          <div className="p-5 sm:p-8 flex flex-col min-h-[400px] md:min-h-[520px]">
 
             {/* Step: Select Type */}
             {step === 'type' && (
@@ -442,7 +442,7 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
                       </div>
 
                       {loadingSlots ? (
-                        <div className="grid grid-cols-3 gap-2.5">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-2.5">
                           {Array.from({ length: 9 }).map((_, i) => (
                             <div key={i} className="skeleton h-[46px] w-full rounded-[14px]" style={{ animationDelay: `${i * 50}ms` }} />
                           ))}
@@ -450,7 +450,7 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
                       ) : slots.length === 0 ? (
                         <div className="text-center py-8 text-sm animate-fade-in" style={{ color: 'var(--text-tertiary)' }}>No hay horarios disponibles este día</div>
                       ) : (
-                        <div className="grid grid-cols-3 gap-2.5 max-h-[280px] overflow-y-auto slots-scroll pr-1 stagger-children">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-2.5 max-h-[240px] sm:max-h-[280px] overflow-y-auto slots-scroll pr-1 stagger-children">
                           {slots.map((slot, i) => {
                             const busy = isSlotBusy(busySlots, selectedDate, slot, selectedType.duration)
                             const isSel = selectedSlot?.label === slot.label
@@ -464,7 +464,7 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
                             )
                           })}
                           {slots.every((slot) => isSlotBusy(busySlots, selectedDate, slot, selectedType.duration)) && (
-                            <div className="col-span-3 text-center py-8 text-sm animate-fade-in" style={{ color: 'var(--text-tertiary)' }}>
+                            <div className="col-span-2 sm:col-span-3 text-center py-8 text-sm animate-fade-in" style={{ color: 'var(--text-tertiary)' }}>
                               No hay horarios disponibles este día
                             </div>
                           )}

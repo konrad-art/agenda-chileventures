@@ -27,7 +27,7 @@ export default function AdminPage() {
     setLoading(false)
   }
 
-  useEffect(() => { loadBookings() }, [filter])
+  useEffect(() => { setLoading(true); loadBookings() }, [filter])
 
   const handleCancel = async (id: string) => {
     await supabase.from('bookings').update({ status: 'cancelled', cancelled_at: new Date().toISOString() }).eq('id', id)
@@ -36,12 +36,17 @@ export default function AdminPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-semibold">📋 Reservas</h1>
-        <div className="flex gap-1 p-1 rounded-[10px]" style={{ background: 'var(--surface-alt)' }}>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
+        <h1 className="text-xl sm:text-2xl font-bold" style={{ letterSpacing: '-0.3px' }}>Reservas</h1>
+        <div className="flex gap-0.5 sm:gap-1 p-1 rounded-[12px]" style={{ background: 'var(--surface-alt)' }}>
           {(['upcoming', 'past', 'cancelled'] as const).map(f => (
             <button key={f} onClick={() => setFilter(f)}
-              className={`px-4 py-1.5 rounded-[8px] text-sm font-medium border-none cursor-pointer transition-all ${filter === f ? 'bg-[var(--surface)] shadow-sm text-[var(--text)]' : 'bg-transparent text-[var(--text-secondary)]'}`}>
+              className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-[9px] text-xs sm:text-sm font-medium border-none cursor-pointer transition-all duration-200 ${
+                filter === f
+                  ? 'bg-[var(--surface)] text-[var(--text)]'
+                  : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text)]'
+              }`}
+              style={filter === f ? { boxShadow: 'var(--shadow-sm)' } : {}}>
               {f === 'upcoming' ? 'Próximas' : f === 'past' ? 'Pasadas' : 'Canceladas'}
             </button>
           ))}
@@ -49,20 +54,27 @@ export default function AdminPage() {
       </div>
 
       {loading ? (
-        <div className="text-center py-12" style={{ color: 'var(--text-tertiary)' }}>Cargando...</div>
+        <div className="flex flex-col gap-3 stagger-children">
+          {[1, 2, 3].map(i => (
+            <div key={i} className="skeleton h-[88px] w-full rounded-[16px]" />
+          ))}
+        </div>
       ) : bookings.length === 0 ? (
-        <div className="rounded-[16px] border p-12 text-center" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
-          <div className="text-4xl mb-3">📭</div>
+        <div className="rounded-[20px] border p-12 text-center animate-scale-in" style={{ background: 'var(--surface)', borderColor: 'var(--border)', boxShadow: 'var(--shadow-sm)' }}>
+          <div className="w-16 h-16 rounded-[18px] flex items-center justify-center text-3xl mx-auto mb-4" style={{ background: 'var(--surface-alt)' }}>
+            <span style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.06))' }}>&#128237;</span>
+          </div>
           <div className="font-semibold">No hay reservas {filter === 'upcoming' ? 'próximas' : filter === 'past' ? 'pasadas' : 'canceladas'}</div>
         </div>
       ) : (
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3 stagger-children">
           {bookings.map(b => {
             const dt = new Date(b.datetime)
             const et = b.event_types as any
             return (
-              <div key={b.id} className="rounded-[14px] border p-5 flex items-center gap-5" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
-                <div className="text-center min-w-[52px]">
+              <div key={b.id} className="event-card rounded-[16px] border p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-5"
+                style={{ background: 'var(--surface)', borderColor: 'var(--border)', boxShadow: 'var(--shadow-sm)' }}>
+                <div className="flex items-center sm:block text-center min-w-[52px] gap-3 sm:gap-0">
                   <div className="text-xs font-semibold uppercase" style={{ color: 'var(--text-tertiary)' }}>
                     {MONTHS_ES[dt.getMonth()].slice(0, 3)}
                   </div>
@@ -72,27 +84,29 @@ export default function AdminPage() {
                   </div>
                 </div>
 
-                <div className="h-12 w-px" style={{ background: 'var(--border)' }} />
+                <div className="hidden sm:block h-12 w-px" style={{ background: 'var(--border)' }} />
 
                 <div className="flex-1 min-w-0">
                   <div className="font-semibold text-[15px]">{b.name}</div>
                   <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>{b.email}</div>
                   {b.extras?.startup && (
-                    <div className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>🏢 {b.extras.startup}</div>
+                    <div className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>&#127970; {b.extras.startup}</div>
                   )}
                 </div>
 
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-[8px] text-xs font-semibold" style={{ background: 'var(--surface-alt)' }}>
-                  {et?.emoji} {et?.name} · {b.duration}min
-                </div>
+                <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-3">
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-[10px] text-xs font-semibold" style={{ background: 'var(--surface-alt)' }}>
+                    {et?.emoji} {et?.name} &middot; {b.duration}min
+                  </div>
 
-                {filter === 'upcoming' && (
-                  <button onClick={() => handleCancel(b.id)}
-                    className="px-3 py-1.5 rounded-[8px] text-xs font-semibold cursor-pointer border"
-                    style={{ background: '#FFF5F5', color: '#C25050', borderColor: '#E8B4B4', fontFamily: 'inherit' }}>
-                    Cancelar
-                  </button>
-                )}
+                  {filter === 'upcoming' && (
+                    <button onClick={() => handleCancel(b.id)}
+                      className="px-3 py-1.5 rounded-[10px] text-xs font-semibold cursor-pointer border transition-all duration-200 hover:bg-[#fde8e8]"
+                      style={{ background: '#FFF5F5', color: '#C25050', borderColor: '#E8B4B4', fontFamily: 'inherit' }}>
+                      Cancelar
+                    </button>
+                  )}
+                </div>
               </div>
             )
           })}

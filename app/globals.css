@@ -120,7 +120,7 @@ body {
   border-color: var(--accent);
   color: var(--accent);
   background: var(--accent-light);
-  transform: translateY(-3px) scale(1.02);
+  transform: translateY(-2px);
   box-shadow: var(--shadow-md);
 }
 .slot-btn:hover::before { opacity: 1; }
@@ -133,6 +133,12 @@ body {
 }
 .slot-btn:disabled { opacity: 0.3; cursor: not-allowed; text-decoration: line-through; transform: none; }
 .slot-btn:active:not(:disabled) { transform: scale(0.97); }
+
+/* Prevent hover from clipping at container edges */
+.slots-grid-wrapper {
+  margin: -4px;
+  padding: 4px;
+}
 
 /* ─── Form Inputs ─── */
 .form-input {
@@ -332,6 +338,16 @@ textarea.form-input { resize: vertical; min-height: 80px; }
   -webkit-backdrop-filter: blur(24px) saturate(1.8);
   border: 1px solid var(--glass-border);
   box-shadow: var(--shadow-lg);
+}
+
+/* ─── Admin cards hover ─── */
+.admin-card {
+  transition:
+    transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.25s ease;
+}
+.admin-card:hover {
+  box-shadow: var(--shadow-md);
 }
 
 /* ─── Meet button ─── */

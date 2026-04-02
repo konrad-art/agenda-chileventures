@@ -70,7 +70,7 @@ export default function LogsPage() {
     setHealthLoading(false)
   }
 
-  useEffect(() => { loadLogs() }, [filter])
+  useEffect(() => { setLoading(true); loadLogs() }, [filter])
   useEffect(() => { loadErrorCount(); runHealthCheck() }, [])
 
   const levelColor = (level: string) => {
@@ -82,8 +82,8 @@ export default function LogsPage() {
   return (
     <div>
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-semibold">Monitoreo</h1>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
+        <h1 className="text-xl sm:text-2xl font-bold" style={{ letterSpacing: '-0.3px' }}>Monitoreo</h1>
         <button
           onClick={runHealthCheck}
           disabled={healthLoading}
@@ -94,40 +94,40 @@ export default function LogsPage() {
       </div>
 
       {/* Health Status + Error Count */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6 stagger-children">
         {/* Health Status */}
-        <div className="rounded-[14px] border p-5" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+        <div className="rounded-[16px] border p-4 sm:p-5" style={{ background: 'var(--surface)', borderColor: 'var(--border)', boxShadow: 'var(--shadow-sm)' }}>
           <div className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--text-tertiary)' }}>Estado</div>
           {health ? (
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full" style={{ background: health.status === 'healthy' ? '#4A7C6B' : '#C25050' }} />
-              <span className="font-semibold text-lg">{health.status === 'healthy' ? 'Saludable' : 'Con problemas'}</span>
+              <span className="font-semibold text-base sm:text-lg">{health.status === 'healthy' ? 'Saludable' : 'Con problemas'}</span>
             </div>
           ) : (
-            <div style={{ color: 'var(--text-tertiary)' }}>Cargando...</div>
+            <div className="skeleton h-6 w-[100px] rounded-md" />
           )}
         </div>
 
         {/* Error Count */}
-        <div className="rounded-[14px] border p-5" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+        <div className="rounded-[16px] border p-4 sm:p-5" style={{ background: 'var(--surface)', borderColor: 'var(--border)', boxShadow: 'var(--shadow-sm)' }}>
           <div className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--text-tertiary)' }}>Errores (24h)</div>
-          <div className="font-semibold text-lg" style={{ color: errorCount24h > 0 ? '#C25050' : 'var(--text)' }}>
+          <div className="font-semibold text-base sm:text-lg" style={{ color: errorCount24h > 0 ? '#C25050' : 'var(--text)' }}>
             {errorCount24h}
           </div>
         </div>
 
         {/* Last Check */}
-        <div className="rounded-[14px] border p-5" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+        <div className="rounded-[16px] border p-4 sm:p-5" style={{ background: 'var(--surface)', borderColor: 'var(--border)', boxShadow: 'var(--shadow-sm)' }}>
           <div className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--text-tertiary)' }}>Ultimo check</div>
           <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-            {health ? new Date(health.timestamp).toLocaleString('es-CL') : '—'}
+            {health ? new Date(health.timestamp).toLocaleString('es-CL') : <span className="skeleton inline-block h-4 w-[140px] rounded-md" />}
           </div>
         </div>
       </div>
 
       {/* Health Details */}
       {health && health.status === 'degraded' && (
-        <div className="rounded-[14px] border p-5 mb-6" style={{ background: '#FFF5F5', borderColor: '#E8B4B4' }}>
+        <div className="rounded-[16px] border p-5 mb-6 animate-scale-in" style={{ background: '#FFF5F5', borderColor: '#E8B4B4' }}>
           <div className="font-semibold mb-3" style={{ color: '#C25050' }}>Problemas detectados:</div>
           {health.checks.filter(c => c.status === 'error').map((c, i) => (
             <div key={i} className="text-sm mb-1">
@@ -139,46 +139,57 @@ export default function LogsPage() {
 
       {/* Log Filter */}
       <div className="flex items-center gap-2 mb-4">
-        <div className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>Filtrar:</div>
-        <div className="flex gap-1 p-1 rounded-[10px]" style={{ background: 'var(--surface-alt)' }}>
+        <div className="text-sm font-semibold hidden sm:block" style={{ color: 'var(--text-secondary)' }}>Filtrar:</div>
+        <div className="flex gap-0.5 sm:gap-1 p-1 rounded-[12px]" style={{ background: 'var(--surface-alt)' }}>
           {(['all', 'error', 'warn', 'info'] as const).map(f => (
             <button key={f} onClick={() => { setLoading(true); setFilter(f) }}
-              className={`px-4 py-1.5 rounded-[8px] text-sm font-medium border-none cursor-pointer transition-all ${filter === f ? 'bg-[var(--surface)] shadow-sm text-[var(--text)]' : 'bg-transparent text-[var(--text-secondary)]'}`}>
+              className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-[9px] text-xs sm:text-sm font-medium border-none cursor-pointer transition-all duration-200 ${
+                filter === f
+                  ? 'bg-[var(--surface)] text-[var(--text)]'
+                  : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text)]'
+              }`}
+              style={filter === f ? { boxShadow: 'var(--shadow-sm)' } : {}}>
               {f === 'all' ? 'Todos' : f.charAt(0).toUpperCase() + f.slice(1)}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Logs Table */}
+      {/* Logs */}
       {loading ? (
-        <div className="text-center py-12" style={{ color: 'var(--text-tertiary)' }}>Cargando...</div>
+        <div className="flex flex-col gap-2 stagger-children">
+          {[1, 2, 3, 4, 5].map(i => (
+            <div key={i} className="skeleton h-[72px] w-full rounded-[14px]" />
+          ))}
+        </div>
       ) : logs.length === 0 ? (
-        <div className="rounded-[16px] border p-12 text-center" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
-          <div className="text-4xl mb-3">📋</div>
+        <div className="rounded-[20px] border p-12 text-center animate-scale-in" style={{ background: 'var(--surface)', borderColor: 'var(--border)', boxShadow: 'var(--shadow-sm)' }}>
+          <div className="w-16 h-16 rounded-[18px] flex items-center justify-center text-3xl mx-auto mb-4" style={{ background: 'var(--surface-alt)' }}>
+            <span style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.06))' }}>&#128203;</span>
+          </div>
           <div className="font-semibold">No hay logs {filter !== 'all' ? `de tipo "${filter}"` : ''}</div>
         </div>
       ) : (
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-2 stagger-children">
           {logs.map(log => {
             const colors = levelColor(log.level)
             const dt = new Date(log.created_at)
             return (
-              <div key={log.id} className="rounded-[12px] border px-4 py-3 flex items-start gap-4"
+              <div key={log.id} className="rounded-[14px] border px-3 sm:px-4 py-3 flex items-start gap-3 sm:gap-4 transition-all duration-200 hover:shadow-sm"
                 style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
-                <div className="px-2 py-0.5 rounded-[6px] text-xs font-bold uppercase shrink-0 mt-0.5"
+                <div className="px-2 py-0.5 rounded-[8px] text-[10px] sm:text-xs font-bold uppercase shrink-0 mt-0.5"
                   style={{ background: colors.bg, color: colors.color, border: `1px solid ${colors.border}` }}>
                   {log.level}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium">{log.message}</div>
-                  <div className="flex items-center gap-3 mt-1 text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                  <div className="flex items-center gap-2 sm:gap-3 mt-1 text-xs flex-wrap" style={{ color: 'var(--text-tertiary)' }}>
                     <span>{log.function_name}</span>
                     <span>{dt.toLocaleString('es-CL')}</span>
-                    {log.ip && <span>{log.ip}</span>}
+                    {log.ip && <span className="hidden sm:inline">{log.ip}</span>}
                   </div>
                   {log.context && Object.keys(log.context).length > 0 && (
-                    <div className="mt-2 text-xs p-2 rounded-[8px] font-mono overflow-x-auto"
+                    <div className="mt-2 text-xs p-2 rounded-[10px] font-mono overflow-x-auto"
                       style={{ background: 'var(--surface-alt)', color: 'var(--text-secondary)' }}>
                       {JSON.stringify(log.context, null, 2)}
                     </div>
