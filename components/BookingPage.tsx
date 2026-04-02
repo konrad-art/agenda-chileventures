@@ -42,6 +42,7 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
   const [extraData, setExtraData] = useState<Record<string, string>>({})
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const [meetLink, setMeetLink] = useState<string | null>(null)
 
   const [busySlots, setBusySlots] = useState<BusySlot[]>([])
   const [loadingSlots, setLoadingSlots] = useState(false)
@@ -188,6 +189,7 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
           setSubmitting(false)
           return
         }
+        if (data.meet_link) setMeetLink(data.meet_link)
       }
       setStep('success')
     } catch {
@@ -510,8 +512,14 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
                   <div className="flex justify-between py-1.5"><span style={{ color: 'var(--text-tertiary)' }}>Duración</span><span className="font-semibold">{selectedType.duration} min</span></div>
                 </div>
 
-                <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-[10px] mt-6 text-sm font-semibold" style={{ background: 'var(--success-light)', color: 'var(--success)' }}>
-                  📧 Confirmación enviada a {formData.email}
+                {meetLink && (
+                  <a href={meetLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-5 py-3 rounded-[10px] mt-6 text-sm font-semibold no-underline" style={{ background: '#1a73e8', color: '#fff' }}>
+                    📹 Unirse a Google Meet
+                  </a>
+                )}
+
+                <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-[10px] mt-4 text-sm font-semibold" style={{ background: 'var(--success-light)', color: 'var(--success)' }}>
+                  📧 Recibirás una invitación de Google Calendar en {formData.email}
                 </div>
 
                 <div className="mt-8">
