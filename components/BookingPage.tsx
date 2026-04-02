@@ -22,6 +22,55 @@ function isSlotBusy(busySlots: BusySlot[], date: Date, slot: TimeSlot, duration:
   })
 }
 
+/* ─── Skeleton Components ─── */
+function SkeletonSidebar() {
+  return (
+    <div className="p-8 border-r flex flex-col gap-6" style={{ borderColor: 'var(--border)' }}>
+      <div className="skeleton w-[52px] h-[52px] rounded-[14px]" />
+      <div>
+        <div className="skeleton h-5 w-[140px] mb-2" />
+        <div className="skeleton h-4 w-[100px] mb-1.5" />
+        <div className="skeleton h-3 w-[120px]" />
+      </div>
+      <div className="h-px" style={{ background: 'var(--border)' }} />
+      <div className="skeleton h-3 w-[100px]" />
+      <div className="flex flex-col gap-2.5">
+        {[1, 2, 3].map(i => (
+          <div key={i} className="skeleton h-[76px] w-full rounded-[14px]" />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function SkeletonCalendar() {
+  return (
+    <div className="p-8 animate-fade-in">
+      <div className="flex items-center justify-between mb-5">
+        <div className="skeleton h-6 w-[160px] rounded-lg" />
+        <div className="flex gap-1.5">
+          <div className="skeleton w-9 h-9 rounded-[10px]" />
+          <div className="skeleton w-9 h-9 rounded-[10px]" />
+        </div>
+      </div>
+      <div className="grid grid-cols-7 gap-1 mb-6">
+        {Array.from({ length: 7 }).map((_, i) => (
+          <div key={`h-${i}`} className="skeleton h-4 w-full rounded-md" />
+        ))}
+        {Array.from({ length: 35 }).map((_, i) => (
+          <div key={i} className="skeleton h-10 w-full rounded-[12px]" style={{ animationDelay: `${i * 20}ms` }} />
+        ))}
+      </div>
+      <div className="skeleton h-3 w-[120px] mb-3 rounded-md" />
+      <div className="grid grid-cols-3 gap-2.5">
+        {Array.from({ length: 9 }).map((_, i) => (
+          <div key={i} className="skeleton h-[46px] w-full rounded-[14px]" style={{ animationDelay: `${i * 40}ms` }} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
 interface Props {
   filterType?: string
   rescheduleToken?: string
@@ -148,7 +197,6 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
 
     try {
       if (isReschedule) {
-        // Reschedule: POST to reschedule endpoint
         const res = await fetch(
           `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/reschedule`,
           {
@@ -167,7 +215,6 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
           return
         }
       } else {
-        // New booking: POST to book endpoint
         const res = await fetch(
           `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/book`,
           {
@@ -205,6 +252,7 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
     setExtraData({})
     setError('')
     setBusySlots([])
+    setMeetLink(null)
     if (filterType && selectedType) {
       setStep('date')
     } else {
@@ -222,8 +270,10 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
   if (rescheduleError) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg)' }}>
-        <div className="text-center">
-          <div className="text-5xl mb-4">⚠️</div>
+        <div className="text-center animate-scale-in">
+          <div className="w-20 h-20 rounded-[20px] flex items-center justify-center text-4xl mx-auto mb-5" style={{ background: '#FFF5F5' }}>
+            <span style={{ filter: 'drop-shadow(0 2px 4px rgba(194,80,80,0.2))' }}>&#9888;&#65039;</span>
+          </div>
           <div className="text-xl font-semibold mb-2">Enlace no válido</div>
           <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>{rescheduleError}</div>
         </div>
@@ -233,8 +283,22 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
 
   if (loading || !config) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ color: 'var(--text-tertiary)' }}>
-        Cargando...
+      <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
+        {/* Skeleton Nav */}
+        <div className="sticky top-0 z-50 floating-nav mx-4 mt-4 rounded-2xl px-6 py-3.5">
+          <div className="flex items-center gap-4">
+            <div className="skeleton h-[18px] w-[140px] rounded-md" />
+            <div className="h-5 w-px" style={{ background: 'var(--border)' }} />
+            <div className="skeleton h-3 w-[60px] rounded-md" />
+          </div>
+        </div>
+        {/* Skeleton Content */}
+        <div className="max-w-[1100px] mx-auto px-6 py-8">
+          <div className="grid md:grid-cols-[300px_1fr] rounded-[24px] border overflow-hidden" style={{ background: 'var(--surface)', borderColor: 'var(--border)', boxShadow: 'var(--shadow-lg)' }}>
+            <SkeletonSidebar />
+            <SkeletonCalendar />
+          </div>
+        </div>
       </div>
     )
   }
@@ -247,24 +311,24 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
-      {/* Top Bar */}
-      <div className="sticky top-0 z-50 flex items-center justify-between px-8 py-4 border-b" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+      {/* ─── Floating Navigation Bar ─── */}
+      <div className="sticky top-0 z-50 floating-nav mx-4 mt-4 rounded-2xl px-6 py-3.5 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <CVLogoFull height={18} dark={true} />
-          <div className="h-5 w-px" style={{ background: 'var(--border-strong)' }} />
+          <div className="h-5 w-px" style={{ background: 'var(--border)' }} />
           <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--text-tertiary)' }}>Agenda</div>
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="max-w-[1100px] mx-auto p-8">
-        <div className="grid md:grid-cols-[300px_1fr] rounded-[20px] border overflow-hidden" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+      {/* ─── Main Content ─── */}
+      <div className="max-w-[1100px] mx-auto px-6 py-8">
+        <div className="grid md:grid-cols-[300px_1fr] rounded-[24px] border overflow-hidden" style={{ background: 'var(--surface)', borderColor: 'var(--border)', boxShadow: 'var(--shadow-lg)' }}>
 
-          {/* Sidebar */}
+          {/* ─── Sidebar ─── */}
           <div className="p-8 border-r flex flex-col gap-6" style={{ borderColor: 'var(--border)' }}>
             <CVMark size={52} />
             <div>
-              <div className="font-bold text-[17px]" style={{ letterSpacing: '-0.2px' }}>{config.name}</div>
+              <div className="font-bold text-[17px]" style={{ letterSpacing: '-0.3px' }}>{config.name}</div>
               <div className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>{config.title}</div>
               <div className="text-xs mt-0.5 font-semibold uppercase tracking-wider" style={{ color: 'var(--accent)' }}>{config.org}</div>
             </div>
@@ -272,8 +336,8 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
             <div className="h-px" style={{ background: 'var(--border)' }} />
 
             {isReschedule && (
-              <div className="px-4 py-3 rounded-[10px] text-sm font-semibold" style={{ background: 'var(--accent-light)', color: 'var(--accent)' }}>
-                🔄 Reagendando reunión
+              <div className="px-4 py-3 rounded-[14px] text-sm font-semibold glass-card" style={{ color: 'var(--accent)', borderColor: 'rgba(45,140,194,0.2)' }}>
+                <span style={{ filter: 'drop-shadow(0 1px 2px rgba(45,140,194,0.2))' }}>&#128260;</span> Reagendando reunión
               </div>
             )}
 
@@ -281,13 +345,14 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
               {isReschedule ? 'Reunión' : filterType ? 'Reunión seleccionada' : 'Tipo de reunión'}
             </div>
 
-            <div className="flex flex-col gap-2.5">
+            <div className="flex flex-col gap-2.5 stagger-children">
               {displayTypes.map((et) => (
                 <div
                   key={et.id}
-                  className={`flex items-center gap-3.5 p-4 rounded-[14px] border-2 transition-all ${isReschedule ? '' : 'cursor-pointer'} ${selectedType?.id === et.id ? 'border-[var(--accent)] bg-[var(--accent-light)]' : 'border-[var(--border)] hover:border-[var(--border-strong)]'}`}
+                  className={`event-card ${isReschedule ? 'event-card-locked' : ''} flex items-center gap-3.5 p-4 rounded-[16px] border-2 ${isReschedule ? '' : 'cursor-pointer'} ${selectedType?.id === et.id ? 'border-[var(--accent)]' : 'border-[var(--border)] hover:border-[var(--border-strong)]'}`}
+                  style={selectedType?.id === et.id ? { background: 'var(--accent-light)', boxShadow: '0 4px 16px rgba(45,140,194,0.08)' } : {}}
                   onClick={() => {
-                    if (isReschedule) return // Lock type in reschedule mode
+                    if (isReschedule) return
                     setSelectedType(et)
                     setStep('date')
                     setSelectedSlot(null)
@@ -296,14 +361,15 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
                     setSelectedDate(null)
                   }}
                 >
-                  <div className={`text-2xl w-11 h-11 flex items-center justify-center rounded-[10px] ${selectedType?.id === et.id ? 'bg-[rgba(45,140,194,0.12)]' : 'bg-[var(--surface-alt)]'}`}>
+                  <div className={`text-2xl w-12 h-12 flex items-center justify-center rounded-[14px] ${selectedType?.id === et.id ? 'bg-[rgba(45,140,194,0.12)]' : 'bg-[var(--surface-alt)]'}`}
+                    style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.06))' }}>
                     {et.emoji}
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <div className="font-semibold text-[15px]">{et.name}</div>
                     <div className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>{et.duration} min</div>
                     {et.description && (
-                      <div className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>{et.description}</div>
+                      <div className="text-xs mt-1 truncate" style={{ color: 'var(--text-tertiary)' }}>{et.description}</div>
                     )}
                   </div>
                 </div>
@@ -311,42 +377,44 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
             </div>
           </div>
 
-          {/* Main Area */}
-          <div className="p-8 flex flex-col">
+          {/* ─── Main Area ─── */}
+          <div className="p-8 flex flex-col min-h-[520px]">
 
             {/* Step: Select Type */}
             {step === 'type' && (
-              <div className="flex-1 flex flex-col items-center justify-center text-center py-20">
-                <div className="text-5xl mb-4">📅</div>
+              <div className="flex-1 flex flex-col items-center justify-center text-center py-20 animate-fade-in">
+                <div className="w-20 h-20 rounded-[22px] flex items-center justify-center text-4xl mx-auto mb-5" style={{ background: 'var(--surface-alt)' }}>
+                  <span style={{ filter: 'drop-shadow(0 3px 6px rgba(0,0,0,0.08))' }}>&#128197;</span>
+                </div>
                 <div className="text-base font-semibold">Selecciona un tipo de reunión</div>
-                <div className="mt-1.5" style={{ color: 'var(--text-secondary)' }}>Elige una opción del panel izquierdo</div>
+                <div className="text-sm mt-1.5" style={{ color: 'var(--text-secondary)' }}>Elige una opción del panel izquierdo</div>
               </div>
             )}
 
             {/* Step: Select Date & Time */}
             {step === 'date' && selectedType && (
-              <>
-                {!filterType && (
-                  <button onClick={goBack} className="text-sm mb-4 cursor-pointer border-none bg-transparent" style={{ color: 'var(--text-secondary)' }}>
-                    ← Cambiar tipo
+              <div className="animate-slide-left">
+                {!filterType && !isReschedule && (
+                  <button onClick={goBack} className="text-sm mb-4 cursor-pointer border-none bg-transparent flex items-center gap-1.5 group" style={{ color: 'var(--text-secondary)' }}>
+                    <span className="inline-block transition-transform duration-200 group-hover:-translate-x-1">&larr;</span> Cambiar tipo
                   </button>
                 )}
 
                 <div className="flex items-center justify-between mb-5">
-                  <div className="text-xl font-semibold" style={{ letterSpacing: '-0.2px' }}>
+                  <div className="text-xl font-semibold" style={{ letterSpacing: '-0.3px' }}>
                     {MONTHS_ES[calMonth.getMonth()]} {calMonth.getFullYear()}
                   </div>
                   <div className="flex gap-1.5">
                     <button onClick={() => setCalMonth(new Date(calMonth.getFullYear(), calMonth.getMonth() - 1, 1))}
-                      className="w-9 h-9 rounded-[10px] border flex items-center justify-center cursor-pointer bg-[var(--surface)] hover:border-[var(--border-strong)]"
-                      style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)' }}>‹</button>
+                      className="w-9 h-9 rounded-[10px] border flex items-center justify-center cursor-pointer bg-[var(--surface)] hover:border-[var(--border-strong)] hover:bg-[var(--surface-alt)] transition-all duration-200"
+                      style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)' }}>&lsaquo;</button>
                     <button onClick={() => setCalMonth(new Date(calMonth.getFullYear(), calMonth.getMonth() + 1, 1))}
-                      className="w-9 h-9 rounded-[10px] border flex items-center justify-center cursor-pointer bg-[var(--surface)] hover:border-[var(--border-strong)]"
-                      style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)' }}>›</button>
+                      className="w-9 h-9 rounded-[10px] border flex items-center justify-center cursor-pointer bg-[var(--surface)] hover:border-[var(--border-strong)] hover:bg-[var(--surface-alt)] transition-all duration-200"
+                      style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)' }}>&rsaquo;</button>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-7 gap-0.5 mb-6">
+                <div className="grid grid-cols-7 gap-1 mb-6">
                   {['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'].map(d => (
                     <div key={d} className="text-center text-xs font-semibold uppercase tracking-wider py-2" style={{ color: 'var(--text-tertiary)' }}>{d}</div>
                   ))}
@@ -368,19 +436,21 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
                 {selectedDate && (() => {
                   const slots = generateTimeSlots(config, selectedDate, selectedType.duration)
                   return (
-                    <div className="flex-1">
+                    <div className="flex-1 animate-slide-up">
                       <div className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--text-tertiary)' }}>
                         {DAYS_ES[selectedDate.getDay()]} {selectedDate.getDate()} de {MONTHS_ES[selectedDate.getMonth()]}
                       </div>
 
                       {loadingSlots ? (
-                        <div className="text-center py-8 text-sm" style={{ color: 'var(--text-tertiary)' }}>
-                          Consultando disponibilidad...
+                        <div className="grid grid-cols-3 gap-2.5">
+                          {Array.from({ length: 9 }).map((_, i) => (
+                            <div key={i} className="skeleton h-[46px] w-full rounded-[14px]" style={{ animationDelay: `${i * 50}ms` }} />
+                          ))}
                         </div>
                       ) : slots.length === 0 ? (
-                        <div className="text-center py-8 text-sm" style={{ color: 'var(--text-tertiary)' }}>No hay horarios disponibles este día</div>
+                        <div className="text-center py-8 text-sm animate-fade-in" style={{ color: 'var(--text-tertiary)' }}>No hay horarios disponibles este día</div>
                       ) : (
-                        <div className="grid grid-cols-3 gap-2 max-h-[280px] overflow-y-auto slots-scroll pr-1">
+                        <div className="grid grid-cols-3 gap-2.5 max-h-[280px] overflow-y-auto slots-scroll pr-1 stagger-children">
                           {slots.map((slot, i) => {
                             const busy = isSlotBusy(busySlots, selectedDate, slot, selectedType.duration)
                             const isSel = selectedSlot?.label === slot.label
@@ -394,7 +464,7 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
                             )
                           })}
                           {slots.every((slot) => isSlotBusy(busySlots, selectedDate, slot, selectedType.duration)) && (
-                            <div className="col-span-3 text-center py-8 text-sm" style={{ color: 'var(--text-tertiary)' }}>
+                            <div className="col-span-3 text-center py-8 text-sm animate-fade-in" style={{ color: 'var(--text-tertiary)' }}>
                               No hay horarios disponibles este día
                             </div>
                           )}
@@ -403,29 +473,35 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
                     </div>
                   )
                 })()}
-              </>
+              </div>
             )}
 
-            {/* Step: Form (reschedule = summary only, new booking = full form) */}
+            {/* Step: Form */}
             {step === 'form' && selectedSlot && selectedType && selectedDate && (
-              <div className="animate-slide-up">
-                <button onClick={goBack} className="text-sm mb-4 cursor-pointer border-none bg-transparent" style={{ color: 'var(--text-secondary)' }}>
-                  ← Cambiar horario
+              <div className="animate-slide-left">
+                <button onClick={goBack} className="text-sm mb-4 cursor-pointer border-none bg-transparent flex items-center gap-1.5 group" style={{ color: 'var(--text-secondary)' }}>
+                  <span className="inline-block transition-transform duration-200 group-hover:-translate-x-1">&larr;</span> Cambiar horario
                 </button>
-                <div className="text-xl font-semibold">{isReschedule ? 'Confirmar reagendamiento' : 'Confirmar reunión'}</div>
-                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-[10px] mt-3 mb-6 text-sm font-semibold" style={{ background: 'var(--surface-alt)', color: 'var(--text-secondary)' }}>
-                  {selectedType.emoji} {selectedType.name} · {selectedType.duration} min · {DAYS_ES[selectedDate.getDay()]} {selectedDate.getDate()}/{selectedDate.getMonth() + 1} · {selectedSlot.label}
+                <div className="text-xl font-semibold" style={{ letterSpacing: '-0.3px' }}>{isReschedule ? 'Confirmar reagendamiento' : 'Confirmar reunión'}</div>
+
+                {/* Selection summary pill */}
+                <div className="inline-flex items-center gap-2 px-4 py-2.5 rounded-[14px] mt-3 mb-6 text-sm font-semibold glass-card">
+                  <span>{selectedType.emoji}</span>
+                  <span style={{ color: 'var(--text-secondary)' }}>{selectedType.name}</span>
+                  <span style={{ color: 'var(--border-strong)' }}>&middot;</span>
+                  <span style={{ color: 'var(--text-secondary)' }}>{selectedType.duration} min</span>
+                  <span style={{ color: 'var(--border-strong)' }}>&middot;</span>
+                  <span style={{ color: 'var(--accent)' }}>{DAYS_ES[selectedDate.getDay()]} {selectedDate.getDate()}/{selectedDate.getMonth() + 1} &middot; {selectedSlot.label}</span>
                 </div>
 
                 {isReschedule ? (
                   <>
-                    {/* Reschedule: read-only summary */}
-                    <div className="rounded-[14px] p-5 text-sm mb-6" style={{ background: 'var(--surface-alt)' }}>
-                      <div className="flex justify-between py-1.5"><span style={{ color: 'var(--text-tertiary)' }}>Nombre</span><span className="font-semibold">{formData.name}</span></div>
-                      <div className="flex justify-between py-1.5"><span style={{ color: 'var(--text-tertiary)' }}>Email</span><span className="font-semibold">{formData.email}</span></div>
-                      {extraData.startup && <div className="flex justify-between py-1.5"><span style={{ color: 'var(--text-tertiary)' }}>Startup</span><span className="font-semibold">{extraData.startup}</span></div>}
+                    <div className="rounded-[18px] p-6 text-sm mb-6" style={{ background: 'var(--surface-alt)' }}>
+                      <div className="flex justify-between py-2"><span style={{ color: 'var(--text-tertiary)' }}>Nombre</span><span className="font-semibold">{formData.name}</span></div>
+                      <div className="flex justify-between py-2"><span style={{ color: 'var(--text-tertiary)' }}>Email</span><span className="font-semibold">{formData.email}</span></div>
+                      {extraData.startup && <div className="flex justify-between py-2"><span style={{ color: 'var(--text-tertiary)' }}>Startup</span><span className="font-semibold">{extraData.startup}</span></div>}
                       {rescheduleData?.datetime && (
-                        <div className="flex justify-between py-1.5 mt-2 pt-3" style={{ borderTop: '1px solid var(--border)' }}>
+                        <div className="flex justify-between py-2 mt-2 pt-3" style={{ borderTop: '1px solid var(--border)' }}>
                           <span style={{ color: 'var(--text-tertiary)' }}>Fecha original</span>
                           <span className="font-semibold" style={{ textDecoration: 'line-through', color: 'var(--text-tertiary)' }}>
                             {new Date(rescheduleData.datetime).toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })} {new Date(rescheduleData.datetime).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}
@@ -436,7 +512,6 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
                   </>
                 ) : (
                   <>
-                    {/* New booking: full form */}
                     <div className="text-xs font-semibold uppercase tracking-wider mb-3 mt-2" style={{ color: 'var(--text-tertiary)' }}>Tu información</div>
                     <div className="mb-4">
                       <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-secondary)' }}>
@@ -482,7 +557,7 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
                 )}
 
                 {error && (
-                  <div className="text-sm font-medium px-4 py-3 rounded-[10px] mb-4" style={{ background: '#FFF5F5', color: '#C25050', border: '1px solid #E8B4B4' }}>
+                  <div className="text-sm font-medium px-4 py-3 rounded-[12px] mb-4 animate-scale-in" style={{ background: '#FFF5F5', color: '#C25050', border: '1px solid #E8B4B4' }}>
                     {error}
                   </div>
                 )}
@@ -498,31 +573,51 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
 
             {/* Step: Success */}
             {step === 'success' && selectedType && selectedDate && selectedSlot && (
-              <div className="animate-slide-up text-center py-16">
-                <div className="w-[72px] h-[72px] rounded-full flex items-center justify-center text-3xl mx-auto mb-6 font-bold" style={{ background: 'var(--success-light)', color: 'var(--success)', fontSize: '28px' }}>✓</div>
-                <div className="text-2xl font-semibold mb-2">{isReschedule ? '¡Reunión reagendada!' : '¡Reunión agendada!'}</div>
-                <div className="text-sm max-w-[360px] mx-auto" style={{ color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+              <div className="flex-1 flex flex-col items-center justify-center text-center py-12">
+                {/* Animated success icon */}
+                <div className="animate-success-pulse animate-ripple w-[80px] h-[80px] rounded-[22px] flex items-center justify-center mx-auto mb-6"
+                  style={{ background: 'var(--success-light)', color: 'var(--success)' }}>
+                  <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                </div>
+
+                <div className="text-2xl font-bold mb-2 animate-slide-up" style={{ letterSpacing: '-0.3px', animationDelay: '0.2s', animationFillMode: 'backwards' }}>
+                  {isReschedule ? '¡Reunión reagendada!' : '¡Reunión agendada!'}
+                </div>
+                <div className="text-sm max-w-[360px] mx-auto animate-slide-up" style={{ color: 'var(--text-secondary)', lineHeight: 1.6, animationDelay: '0.3s', animationFillMode: 'backwards' }}>
                   {isReschedule ? 'Tu reunión ha sido movida exitosamente.' : `Tu reunión con ${config.name} ha sido confirmada.`}
                 </div>
 
-                <div className="max-w-[320px] mx-auto mt-6 rounded-[14px] p-5 text-left text-sm" style={{ background: 'var(--surface-alt)' }}>
-                  <div className="flex justify-between py-1.5"><span style={{ color: 'var(--text-tertiary)' }}>Tipo</span><span className="font-semibold">{selectedType.emoji} {selectedType.name}</span></div>
-                  <div className="flex justify-between py-1.5"><span style={{ color: 'var(--text-tertiary)' }}>Fecha</span><span className="font-semibold">{DAYS_ES[selectedDate.getDay()]} {selectedDate.getDate()} de {MONTHS_ES[selectedDate.getMonth()]}</span></div>
-                  <div className="flex justify-between py-1.5"><span style={{ color: 'var(--text-tertiary)' }}>Hora</span><span className="font-semibold">{selectedSlot.label} ({config.timezone})</span></div>
-                  <div className="flex justify-between py-1.5"><span style={{ color: 'var(--text-tertiary)' }}>Duración</span><span className="font-semibold">{selectedType.duration} min</span></div>
+                {/* Summary card */}
+                <div className="max-w-[340px] w-full mx-auto mt-6 rounded-[18px] p-6 text-left text-sm animate-slide-up" style={{ background: 'var(--surface-alt)', animationDelay: '0.4s', animationFillMode: 'backwards' }}>
+                  <div className="flex justify-between py-2"><span style={{ color: 'var(--text-tertiary)' }}>Tipo</span><span className="font-semibold">{selectedType.emoji} {selectedType.name}</span></div>
+                  <div className="flex justify-between py-2"><span style={{ color: 'var(--text-tertiary)' }}>Fecha</span><span className="font-semibold">{DAYS_ES[selectedDate.getDay()]} {selectedDate.getDate()} de {MONTHS_ES[selectedDate.getMonth()]}</span></div>
+                  <div className="flex justify-between py-2"><span style={{ color: 'var(--text-tertiary)' }}>Hora</span><span className="font-semibold">{selectedSlot.label} ({config.timezone})</span></div>
+                  <div className="flex justify-between py-2"><span style={{ color: 'var(--text-tertiary)' }}>Duración</span><span className="font-semibold">{selectedType.duration} min</span></div>
                 </div>
 
+                {/* Google Meet button */}
                 {meetLink && (
-                  <a href={meetLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-5 py-3 rounded-[10px] mt-6 text-sm font-semibold no-underline" style={{ background: '#1a73e8', color: '#fff' }}>
-                    📹 Unirse a Google Meet
-                  </a>
+                  <div className="animate-slide-up" style={{ animationDelay: '0.5s', animationFillMode: 'backwards' }}>
+                    <a href={meetLink} target="_blank" rel="noopener noreferrer"
+                      className="btn-meet inline-flex items-center gap-2.5 px-6 py-3.5 rounded-[14px] mt-6 text-sm font-semibold no-underline"
+                      style={{ background: '#1a73e8', color: '#fff' }}>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
+                      Unirse a Google Meet
+                    </a>
+                  </div>
                 )}
 
-                <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-[10px] mt-4 text-sm font-semibold" style={{ background: 'var(--success-light)', color: 'var(--success)' }}>
-                  📧 Recibirás una invitación de Google Calendar en {formData.email}
+                {/* Calendar invite notice */}
+                <div className="animate-slide-up" style={{ animationDelay: '0.6s', animationFillMode: 'backwards' }}>
+                  <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-[12px] mt-4 text-sm font-semibold" style={{ background: 'var(--success-light)', color: 'var(--success)' }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    Recibirás una invitación de Google Calendar en {formData.email}
+                  </div>
                 </div>
 
-                <div className="mt-8">
+                <div className="mt-8 animate-slide-up" style={{ animationDelay: '0.7s', animationFillMode: 'backwards' }}>
                   <button className="btn-secondary" onClick={resetBooking}>Agendar otra reunión</button>
                 </div>
               </div>
