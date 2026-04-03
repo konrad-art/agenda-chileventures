@@ -267,9 +267,16 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
     else if (step === 'date' && !filterType && !isReschedule) { setStep('type'); setSelectedType(null); setSelectedDate(null); setBusySlots([]) }
   }
 
+  const stepIndex = step === 'type' ? 0 : step === 'date' ? 1 : step === 'form' ? 2 : 3
+  const stepLabels = isReschedule
+    ? ['Fecha', 'Confirmar']
+    : filterType
+      ? ['Fecha', 'Datos', 'Listo']
+      : ['Tipo', 'Fecha', 'Datos', 'Listo']
+
   if (rescheduleError) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg)' }}>
+      <div className="min-h-screen flex items-center justify-center mesh-bg">
         <div className="text-center animate-scale-in">
           <div className="w-20 h-20 rounded-[20px] flex items-center justify-center text-4xl mx-auto mb-5" style={{ background: '#FFF5F5' }}>
             <span style={{ filter: 'drop-shadow(0 2px 4px rgba(194,80,80,0.2))' }}>&#9888;&#65039;</span>
@@ -283,7 +290,7 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
 
   if (loading || !config) {
     return (
-      <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
+      <div className="min-h-screen mesh-bg">
         {/* Skeleton Nav */}
         <div className="sticky top-0 z-50 floating-nav mx-4 mt-4 rounded-2xl px-6 py-3.5">
           <div className="flex items-center gap-4">
@@ -310,7 +317,7 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
       : eventTypes
 
   return (
-    <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
+    <div className="min-h-screen mesh-bg">
       {/* ─── Floating Navigation Bar ─── */}
       <div className="sticky top-0 z-50 floating-nav mx-2 sm:mx-4 mt-2 sm:mt-4 rounded-2xl px-4 sm:px-6 py-3 sm:py-3.5 flex items-center justify-between">
         <div className="flex items-center gap-3 sm:gap-4">
@@ -318,6 +325,28 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
           <div className="h-5 w-px hidden sm:block" style={{ background: 'var(--border)' }} />
           <div className="text-xs font-semibold uppercase tracking-widest hidden sm:block" style={{ color: 'var(--text-tertiary)' }}>Agenda</div>
         </div>
+        {/* Progress Steps */}
+        {step !== 'type' && (
+          <div className="progress-steps hidden sm:flex">
+            {stepLabels.map((label, i) => {
+              const isActive = i === (filterType || isReschedule ? stepIndex - 1 : stepIndex)
+              const isDone = i < (filterType || isReschedule ? stepIndex - 1 : stepIndex)
+              return (
+                <div key={label} className="flex items-center">
+                  {i > 0 && <div className={`progress-step-line ${isDone ? 'done' : ''}`} />}
+                  <div className={`progress-step ${isActive ? 'active' : ''} ${isDone ? 'done' : ''}`}>
+                    <div className="progress-step-dot">
+                      {isDone ? (
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                      ) : i + 1}
+                    </div>
+                    <span className="hidden md:inline">{label}</span>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
       </div>
 
       {/* ─── Main Content ─── */}
@@ -383,11 +412,17 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
             {/* Step: Select Type */}
             {step === 'type' && (
               <div className="flex-1 flex flex-col items-center justify-center text-center py-20 animate-fade-in">
-                <div className="w-20 h-20 rounded-[22px] flex items-center justify-center text-4xl mx-auto mb-5" style={{ background: 'var(--surface-alt)' }}>
+                <div className="empty-state-icon">
                   <span style={{ filter: 'drop-shadow(0 3px 6px rgba(0,0,0,0.08))' }}>&#128197;</span>
                 </div>
                 <div className="text-base font-semibold">Selecciona un tipo de reunión</div>
-                <div className="text-sm mt-1.5" style={{ color: 'var(--text-secondary)' }}>Elige una opción del panel izquierdo</div>
+                <div className="text-sm mt-1.5 max-w-[260px]" style={{ color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                  Elige una opción del panel {window.innerWidth < 768 ? 'superior' : 'izquierdo'} para comenzar
+                </div>
+                <div className="flex items-center gap-2 mt-4 text-xs font-medium" style={{ color: 'var(--text-tertiary)' }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                  Rápido y sin crear cuenta
+                </div>
               </div>
             )}
 
@@ -573,7 +608,20 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
 
             {/* Step: Success */}
             {step === 'success' && selectedType && selectedDate && selectedSlot && (
-              <div className="flex-1 flex flex-col items-center justify-center text-center py-12">
+              <div className="flex-1 flex flex-col items-center justify-center text-center py-12 relative overflow-hidden">
+                {/* Confetti dots */}
+                {[
+                  { color: 'var(--accent)', left: '20%', delay: '0s' },
+                  { color: 'var(--success)', left: '35%', delay: '0.1s' },
+                  { color: '#F59E0B', left: '50%', delay: '0.2s' },
+                  { color: 'var(--accent)', left: '65%', delay: '0.15s' },
+                  { color: '#EC4899', left: '80%', delay: '0.25s' },
+                  { color: 'var(--success)', left: '25%', delay: '0.3s' },
+                  { color: '#8B5CF6', left: '70%', delay: '0.05s' },
+                ].map((dot, i) => (
+                  <div key={i} className="confetti-dot" style={{ background: dot.color, left: dot.left, top: '45%', animationDelay: dot.delay }} />
+                ))}
+
                 {/* Animated success icon */}
                 <div className="animate-success-pulse animate-ripple w-[80px] h-[80px] rounded-[22px] flex items-center justify-center mx-auto mb-6"
                   style={{ background: 'var(--success-light)', color: 'var(--success)' }}>

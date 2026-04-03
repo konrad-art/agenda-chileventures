@@ -33,7 +33,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4" style={{ background: 'var(--bg)' }}>
+    <div className="min-h-screen flex items-center justify-center px-4 mesh-bg">
       <div className="w-full max-w-sm animate-scale-in">
         {/* Logo */}
         <div className="flex justify-center mb-8">

@@ -7,11 +7,17 @@ import { DAYS_ES, MONTHS_ES } from '@/lib/helpers'
 
 export default function AdminPage() {
   const [bookings, setBookings] = useState<Booking[]>([])
+  const [allBookings, setAllBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<'upcoming' | 'past' | 'cancelled'>('upcoming')
 
   const loadBookings = async () => {
     const now = new Date().toISOString()
+
+    // Load stats (all upcoming confirmed)
+    const { data: allData } = await supabase.from('bookings').select('id, datetime, status').eq('status', 'confirmed').gte('datetime', now)
+    if (allData) setAllBookings(allData)
+
     let query = supabase.from('bookings').select('*, event_types(name, emoji, color)').order('datetime', { ascending: true })
 
     if (filter === 'upcoming') {
@@ -29,6 +35,25 @@ export default function AdminPage() {
 
   useEffect(() => { setLoading(true); loadBookings() }, [filter])
 
+  // Stats
+  const todayCount = allBookings.filter(b => {
+    const d = new Date(b.datetime)
+    const today = new Date()
+    return d.getDate() === today.getDate() && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear()
+  }).length
+  const weekCount = allBookings.filter(b => {
+    const d = new Date(b.datetime)
+    const now = new Date()
+    const weekEnd = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
+    return d >= now && d <= weekEnd
+  }).length
+  const nextBooking = allBookings.length > 0
+    ? allBookings.reduce((a, b) => new Date(a.datetime) < new Date(b.datetime) ? a : b)
+    : null
+  const nextIn = nextBooking
+    ? Math.max(0, Math.round((new Date(nextBooking.datetime).getTime() - Date.now()) / (1000 * 60 * 60)))
+    : null
+
   const handleCancel = async (id: string) => {
     await supabase.from('bookings').update({ status: 'cancelled', cancelled_at: new Date().toISOString() }).eq('id', id)
     loadBookings()
@@ -36,6 +61,29 @@ export default function AdminPage() {
 
   return (
     <div>
+      {/* Stats Row */}
+      {!loading && filter === 'upcoming' && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6 stagger-children">
+          <div className="stat-card">
+            <div className="stat-icon" style={{ background: 'var(--accent-subtle)' }}>&#128197;</div>
+            <div className="stat-value" style={{ color: 'var(--accent)' }}>{todayCount}</div>
+            <div className="stat-label">Hoy</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-icon" style={{ background: 'var(--success-light)' }}>&#128200;</div>
+            <div className="stat-value">{weekCount}</div>
+            <div className="stat-label">Esta semana</div>
+          </div>
+          <div className="stat-card hidden sm:block">
+            <div className="stat-icon" style={{ background: 'var(--warn-light)' }}>&#9200;</div>
+            <div className="stat-value" style={{ fontSize: nextIn !== null && nextIn > 99 ? '22px' : undefined }}>
+              {nextIn !== null ? (nextIn < 1 ? '<1h' : `${nextIn}h`) : '—'}
+            </div>
+            <div className="stat-label">Próxima reunión</div>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
         <div className="flex items-center gap-3">
           <h1 className="text-xl sm:text-2xl font-bold" style={{ letterSpacing: '-0.3px' }}>Reservas</h1>
@@ -63,10 +111,13 @@ export default function AdminPage() {
         </div>
       ) : bookings.length === 0 ? (
         <div className="card p-12 text-center animate-scale-in">
-          <div className="w-16 h-16 rounded-[18px] flex items-center justify-center text-3xl mx-auto mb-4" style={{ background: 'var(--surface-alt)' }}>
+          <div className="empty-state-icon">
             <span style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.06))' }}>&#128237;</span>
           </div>
           <div className="font-semibold">No hay reservas {filter === 'upcoming' ? 'próximas' : filter === 'past' ? 'pasadas' : 'canceladas'}</div>
+          <div className="text-sm mt-1.5" style={{ color: 'var(--text-tertiary)' }}>
+            {filter === 'upcoming' ? 'Las nuevas reservas aparecerán aquí' : ''}
+          </div>
         </div>
       ) : (
         <div className="flex flex-col gap-3 stagger-children">
@@ -74,7 +125,7 @@ export default function AdminPage() {
             const dt = new Date(b.datetime)
             const et = b.event_types as any
             return (
-              <div key={b.id} className="card p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-5 transition-all duration-200 hover:shadow-md">
+              <div key={b.id} className="card card-glow booking-stripe p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-5 transition-all duration-200 hover:shadow-md">
                 <div className="flex items-center sm:block text-center min-w-[52px] gap-3 sm:gap-0">
                   <div className="text-xs font-semibold uppercase" style={{ color: 'var(--text-tertiary)' }}>
                     {MONTHS_ES[dt.getMonth()].slice(0, 3)}

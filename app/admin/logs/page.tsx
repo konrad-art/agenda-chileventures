@@ -96,12 +96,16 @@ export default function LogsPage() {
       {/* Health Status + Error Count */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6 stagger-children">
         {/* Health Status */}
-        <div className="rounded-[16px] border p-4 sm:p-5" style={{ background: 'var(--surface)', borderColor: 'var(--border)', boxShadow: 'var(--shadow-sm)' }}>
-          <div className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--text-tertiary)' }}>Estado</div>
+        <div className="stat-card">
+          <div className="stat-icon" style={{ background: health?.status === 'healthy' ? 'var(--success-light)' : 'var(--error-light)' }}>
+            {health?.status === 'healthy' ? '&#9989;' : '&#9888;&#65039;'}
+          </div>
           {health ? (
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full" style={{ background: health.status === 'healthy' ? '#4A7C6B' : '#C25050' }} />
-              <span className="font-semibold text-base sm:text-lg">{health.status === 'healthy' ? 'Saludable' : 'Con problemas'}</span>
+            <div>
+              <div className="stat-value" style={{ color: health.status === 'healthy' ? 'var(--success)' : 'var(--error)' }}>
+                {health.status === 'healthy' ? 'OK' : 'Alerta'}
+              </div>
+              <div className="stat-label">Estado del sistema</div>
             </div>
           ) : (
             <div className="skeleton h-6 w-[100px] rounded-md" />
@@ -109,19 +113,23 @@ export default function LogsPage() {
         </div>
 
         {/* Error Count */}
-        <div className="rounded-[16px] border p-4 sm:p-5" style={{ background: 'var(--surface)', borderColor: 'var(--border)', boxShadow: 'var(--shadow-sm)' }}>
-          <div className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--text-tertiary)' }}>Errores (24h)</div>
-          <div className="font-semibold text-base sm:text-lg" style={{ color: errorCount24h > 0 ? '#C25050' : 'var(--text)' }}>
+        <div className="stat-card">
+          <div className="stat-icon" style={{ background: errorCount24h > 0 ? 'var(--error-light)' : 'var(--surface-alt)' }}>
+            {errorCount24h > 0 ? '&#128308;' : '&#128994;'}
+          </div>
+          <div className="stat-value" style={{ color: errorCount24h > 0 ? 'var(--error)' : 'var(--text)' }}>
             {errorCount24h}
           </div>
+          <div className="stat-label">Errores (24h)</div>
         </div>
 
         {/* Last Check */}
-        <div className="rounded-[16px] border p-4 sm:p-5" style={{ background: 'var(--surface)', borderColor: 'var(--border)', boxShadow: 'var(--shadow-sm)' }}>
-          <div className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--text-tertiary)' }}>Ultimo check</div>
-          <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-            {health ? new Date(health.timestamp).toLocaleString('es-CL') : <span className="skeleton inline-block h-4 w-[140px] rounded-md" />}
+        <div className="stat-card">
+          <div className="stat-icon" style={{ background: 'var(--accent-subtle)' }}>&#128337;</div>
+          <div className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
+            {health ? new Date(health.timestamp).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }) : <span className="skeleton inline-block h-4 w-[60px] rounded-md" />}
           </div>
+          <div className="stat-label">Ultimo check</div>
         </div>
       </div>
 
@@ -177,8 +185,7 @@ export default function LogsPage() {
             return (
               <div key={log.id} className="rounded-[14px] border px-3 sm:px-4 py-3 flex items-start gap-3 sm:gap-4 transition-all duration-200 hover:shadow-sm"
                 style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
-                <div className="px-2 py-0.5 rounded-[8px] text-[10px] sm:text-xs font-bold uppercase shrink-0 mt-0.5"
-                  style={{ background: colors.bg, color: colors.color, border: `1px solid ${colors.border}` }}>
+                <div className={`badge shrink-0 mt-0.5 ${log.level === 'error' ? 'badge-error' : log.level === 'warn' ? 'badge-warn' : 'badge-accent'}`}>
                   {log.level}
                 </div>
                 <div className="flex-1 min-w-0">
