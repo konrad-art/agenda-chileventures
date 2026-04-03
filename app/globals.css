@@ -220,6 +220,13 @@ body {
   transform: scale(1.05);
 }
 .mini-cal-day.disabled { color: var(--text-tertiary); opacity: 0.35; cursor: default; }
+.mini-cal-day.fully-booked {
+  color: var(--text-tertiary);
+  opacity: 0.35;
+  cursor: default;
+  text-decoration: line-through;
+  text-decoration-color: var(--border-strong);
+}
 .mini-cal-day.other-month { color: var(--text-tertiary); opacity: 0.2; }
 
 /* ─── Bento Time Slots ─── */

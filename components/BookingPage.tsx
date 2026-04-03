@@ -98,6 +98,11 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
   const [rescheduleData, setRescheduleData] = useState<any>(null)
   const [rescheduleError, setRescheduleError] = useState('')
 
+  // Month-level availability: dates with no free slots are disabled in the calendar
+  const [monthBusyMap, setMonthBusyMap] = useState<Record<string, BusySlot[]>>({})
+  const [fullyBookedDates, setFullyBookedDates] = useState<Set<string>>(new Set())
+  const [loadingMonth, setLoadingMonth] = useState(false)
+
   const isReschedule = !!rescheduleToken
 
   // Load data from Supabase
@@ -152,9 +157,90 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
     loadReschedule()
   }, [rescheduleToken, eventTypes])
 
-  // Fetch busy slots when date changes
+  // Fetch availability for all working days in the visible month
+  useEffect(() => {
+    if (!selectedType || !config || step === 'type' || step === 'success') return
+
+    let cancelled = false
+
+    async function fetchMonthAvailability() {
+      setLoadingMonth(true)
+      const year = calMonth.getFullYear()
+      const month = calMonth.getMonth()
+      const daysInMonth = new Date(year, month + 1, 0).getDate()
+
+      // Collect all working days that pass isDateAvailable
+      const workingDays: Date[] = []
+      for (let d = 1; d <= daysInMonth; d++) {
+        const date = new Date(year, month, d)
+        if (isDateAvailable(config, date)) {
+          workingDays.push(date)
+        }
+      }
+
+      // Fetch availability for all working days in parallel (batches of 8)
+      const busyMap: Record<string, BusySlot[]> = {}
+      const batchSize = 8
+      for (let i = 0; i < workingDays.length; i += batchSize) {
+        if (cancelled) return
+        const batch = workingDays.slice(i, i + batchSize)
+        const results = await Promise.all(
+          batch.map(async (date) => {
+            try {
+              const res = await fetch(
+                `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/availability`,
+                {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ date: date.toISOString() }),
+                }
+              )
+              const data = await res.json()
+              return { date, busy: data.busy || [] }
+            } catch {
+              return { date, busy: [] }
+            }
+          })
+        )
+        for (const { date, busy } of results) {
+          const key = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`
+          busyMap[key] = busy
+        }
+      }
+
+      if (cancelled) return
+
+      // Determine which dates are fully booked
+      const fullyBooked = new Set<string>()
+      for (const date of workingDays) {
+        const key = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`
+        const dayBusy = busyMap[key] || []
+        const slots = generateTimeSlots(config, date, selectedType.duration)
+        if (slots.length === 0) {
+          fullyBooked.add(key)
+          continue
+        }
+        const allBusy = slots.every(slot => isSlotBusy(dayBusy, date, slot, selectedType.duration))
+        if (allBusy) fullyBooked.add(key)
+      }
+
+      setMonthBusyMap(busyMap)
+      setFullyBookedDates(fullyBooked)
+      setLoadingMonth(false)
+    }
+
+    fetchMonthAvailability()
+    return () => { cancelled = true }
+  }, [selectedType?.id, calMonth.getMonth(), calMonth.getFullYear(), config, step])
+
+  // When a date is selected, use cached busy data if available, otherwise fetch
   useEffect(() => {
     if (!selectedDate || !config) return
+    const key = `${selectedDate.getFullYear()}-${selectedDate.getMonth()}-${selectedDate.getDate()}`
+    if (monthBusyMap[key]) {
+      setBusySlots(monthBusyMap[key])
+      return
+    }
     async function fetchAvailability() {
       setLoadingSlots(true)
       setBusySlots([])
@@ -388,6 +474,8 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
                     setExtraData({})
                     setBusySlots([])
                     setSelectedDate(null)
+                    setMonthBusyMap({})
+                    setFullyBookedDates(new Set())
                   }}
                 >
                   <div className={`text-2xl w-12 h-12 flex items-center justify-center rounded-[14px] ${selectedType?.id === et.id ? 'bg-[rgba(45,140,194,0.12)]' : 'bg-[var(--surface-alt)]'}`}
@@ -436,8 +524,16 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
                 )}
 
                 <div className="flex items-center justify-between mb-5">
-                  <div className="text-xl font-semibold" style={{ letterSpacing: '-0.3px' }}>
-                    {MONTHS_ES[calMonth.getMonth()]} {calMonth.getFullYear()}
+                  <div className="flex items-center gap-3">
+                    <div className="text-xl font-semibold" style={{ letterSpacing: '-0.3px' }}>
+                      {MONTHS_ES[calMonth.getMonth()]} {calMonth.getFullYear()}
+                    </div>
+                    {loadingMonth && (
+                      <div className="flex items-center gap-1.5 text-xs font-medium animate-fade-in" style={{ color: 'var(--text-tertiary)' }}>
+                        <div className="w-3 h-3 rounded-full border-2 border-[var(--border)] border-t-[var(--accent)] animate-spin" />
+                        <span className="hidden sm:inline">Verificando...</span>
+                      </div>
+                    )}
                   </div>
                   <div className="flex gap-1.5">
                     <button onClick={() => setCalMonth(new Date(calMonth.getFullYear(), calMonth.getMonth() - 1, 1))}
@@ -455,13 +551,16 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
                   ))}
                   {getCalendarDays(calMonth).map((cd, i) => {
                     const date = new Date(calMonth.getFullYear(), cd.month, cd.day)
-                    const avail = !cd.otherMonth && isDateAvailable(config, date)
+                    const dateKey = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`
+                    const avail = !cd.otherMonth && isDateAvailable(config, date) && !fullyBookedDates.has(dateKey)
                     const isToday = !cd.otherMonth && isSameDay(date, new Date())
                     const isSel = selectedDate && !cd.otherMonth && isSameDay(date, selectedDate)
+                    const isFullyBooked = !cd.otherMonth && isDateAvailable(config, date) && fullyBookedDates.has(dateKey)
                     return (
                       <div key={i}
-                        className={`mini-cal-day ${cd.otherMonth ? 'other-month' : ''} ${!avail && !cd.otherMonth ? 'disabled' : ''} ${isToday ? 'today' : ''} ${isSel ? 'selected' : ''}`}
-                        onClick={() => { if (avail && !cd.otherMonth) { setSelectedDate(date); setSelectedSlot(null) } }}>
+                        className={`mini-cal-day ${cd.otherMonth ? 'other-month' : ''} ${!avail && !cd.otherMonth ? 'disabled' : ''} ${isToday ? 'today' : ''} ${isSel ? 'selected' : ''} ${isFullyBooked ? 'fully-booked' : ''}`}
+                        onClick={() => { if (avail && !cd.otherMonth) { setSelectedDate(date); setSelectedSlot(null) } }}
+                        title={isFullyBooked ? 'Sin horarios disponibles' : undefined}>
                         {cd.day}
                       </div>
                     )
