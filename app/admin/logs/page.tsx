@@ -98,7 +98,7 @@ export default function LogsPage() {
         {/* Health Status */}
         <div className="stat-card">
           <div className="stat-icon" style={{ background: health?.status === 'healthy' ? 'var(--success-light)' : 'var(--error-light)' }}>
-            {health?.status === 'healthy' ? '&#9989;' : '&#9888;&#65039;'}
+            {health?.status === 'healthy' ? '\u2705' : '\u26A0\uFE0F'}
           </div>
           {health ? (
             <div>
@@ -115,7 +115,7 @@ export default function LogsPage() {
         {/* Error Count */}
         <div className="stat-card">
           <div className="stat-icon" style={{ background: errorCount24h > 0 ? 'var(--error-light)' : 'var(--surface-alt)' }}>
-            {errorCount24h > 0 ? '&#128308;' : '&#128994;'}
+            {errorCount24h > 0 ? '\uD83D\uDD34' : '\uD83D\uDFE2'}
           </div>
           <div className="stat-value" style={{ color: errorCount24h > 0 ? 'var(--error)' : 'var(--text)' }}>
             {errorCount24h}
@@ -125,7 +125,7 @@ export default function LogsPage() {
 
         {/* Last Check */}
         <div className="stat-card">
-          <div className="stat-icon" style={{ background: 'var(--accent-subtle)' }}>&#128337;</div>
+          <div className="stat-icon" style={{ background: 'var(--accent-subtle)' }}>{'\uD83D\uDD51'}</div>
           <div className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
             {health ? new Date(health.timestamp).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }) : <span className="skeleton inline-block h-4 w-[60px] rounded-md" />}
           </div>
@@ -173,7 +173,7 @@ export default function LogsPage() {
       ) : logs.length === 0 ? (
         <div className="rounded-[20px] border p-12 text-center animate-scale-in" style={{ background: 'var(--surface)', borderColor: 'var(--border)', boxShadow: 'var(--shadow-sm)' }}>
           <div className="w-16 h-16 rounded-[18px] flex items-center justify-center text-3xl mx-auto mb-4" style={{ background: 'var(--surface-alt)' }}>
-            <span style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.06))' }}>&#128203;</span>
+            <span style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.06))' }}>{'\uD83D\uDCCB'}</span>
           </div>
           <div className="font-semibold">No hay logs {filter !== 'all' ? `de tipo "${filter}"` : ''}</div>
         </div>
