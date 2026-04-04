@@ -161,6 +161,8 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
   useEffect(() => {
     if (!selectedType || !config || step === 'type' || step === 'success') return
 
+    const currentConfig = config
+    const currentType = selectedType
     let cancelled = false
 
     async function fetchMonthAvailability() {
@@ -173,7 +175,7 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
       const workingDays: Date[] = []
       for (let d = 1; d <= daysInMonth; d++) {
         const date = new Date(year, month, d)
-        if (isDateAvailable(config, date)) {
+        if (isDateAvailable(currentConfig, date)) {
           workingDays.push(date)
         }
       }
@@ -215,12 +217,12 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
       for (const date of workingDays) {
         const key = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`
         const dayBusy = busyMap[key] || []
-        const slots = generateTimeSlots(config, date, selectedType.duration)
+        const slots = generateTimeSlots(currentConfig, date, currentType.duration)
         if (slots.length === 0) {
           fullyBooked.add(key)
           continue
         }
-        const allBusy = slots.every(slot => isSlotBusy(dayBusy, date, slot, selectedType.duration))
+        const allBusy = slots.every(slot => isSlotBusy(dayBusy, date, slot, currentType.duration))
         if (allBusy) fullyBooked.add(key)
       }
 
