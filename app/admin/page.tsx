@@ -7,7 +7,7 @@ import { DAYS_ES, MONTHS_ES } from '@/lib/helpers'
 
 export default function AdminPage() {
   const [bookings, setBookings] = useState<Booking[]>([])
-  const [allBookings, setAllBookings] = useState<Booking[]>([])
+  const [allBookings, setAllBookings] = useState<{ id: string; datetime: string; status: string }[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<'upcoming' | 'past' | 'cancelled'>('upcoming')
 
