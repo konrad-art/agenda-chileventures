@@ -35,14 +35,27 @@ export default function SettingsPage() {
 
   async function loadData() {
     const [configRes, typesRes] = await Promise.all([
-      supabase.from('config').select('*').single(),
+      supabase.from('config').select('id, name, title, org, timezone, working_days, start_hour, end_hour, buffer_minutes, max_days_ahead, google_calendar_id, notification_email').single(),
       supabase.from('event_types').select('*').order('sort_order'),
     ])
     if (configRes.data) {
       setConfig(configRes.data)
-      setGcalConnected(!!configRes.data.google_calendar_token)
     }
     if (typesRes.data) setEventTypes(typesRes.data)
+
+    // Check Google Calendar connection via edge function (does not expose token)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/google-auth?action=status`,
+        { headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {} }
+      )
+      if (res.ok) {
+        const data = await res.json()
+        setGcalConnected(!!data.connected)
+      }
+    } catch { /* */ }
+
     setLoading(false)
   }
 

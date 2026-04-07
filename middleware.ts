@@ -23,16 +23,34 @@ export async function middleware(req: NextRequest) {
     }
   )
 
-  const { data: { session } } = await supabase.auth.getSession()
+  // Use getUser() (not getSession) — validates JWT against Supabase Auth
+  const { data: { user } } = await supabase.auth.getUser()
 
-  // Protect admin routes — redirect to login if no session
-  if (req.nextUrl.pathname.startsWith('/admin') && !session) {
-    return NextResponse.redirect(new URL('/login', req.url))
-  }
+  const isProtected =
+    req.nextUrl.pathname.startsWith('/admin') ||
+    req.nextUrl.pathname.startsWith('/preview-email')
 
-  // Block debug/preview routes in production
-  if (req.nextUrl.pathname.startsWith('/preview-email')) {
-    if (!session) {
+  if (isProtected) {
+    if (!user) {
+      return NextResponse.redirect(new URL('/login', req.url))
+    }
+
+    // H3: enforce admin allowlist against the admins table
+    if (user.email) {
+      const { data: admin } = await supabase
+        .from('admins')
+        .select('email')
+        .eq('email', user.email)
+        .maybeSingle()
+
+      if (!admin) {
+        // Sign out and redirect to login with error flag
+        await supabase.auth.signOut()
+        const url = new URL('/login', req.url)
+        url.searchParams.set('error', 'unauthorized')
+        return NextResponse.redirect(url)
+      }
+    } else {
       return NextResponse.redirect(new URL('/login', req.url))
     }
   }

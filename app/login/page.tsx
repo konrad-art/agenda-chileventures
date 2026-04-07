@@ -13,6 +13,10 @@ export default function LoginPage() {
   // Clear any stale client-side session on mount to prevent loops
   useEffect(() => {
     supabase.auth.signOut()
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('error') === 'unauthorized') {
+      setError('Este email no tiene permisos de administrador')
+    }
   }, [])
 
   const handleGoogleLogin = async () => {
