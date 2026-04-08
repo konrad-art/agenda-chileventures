@@ -490,10 +490,23 @@ export default function SettingsPage() {
         ) : (
           <div>
             <p className="text-sm mb-3" style={{ color: 'var(--text-secondary)' }}>Conecta tu Google Calendar para verificar disponibilidad real y crear eventos automáticamente.</p>
-            <a href={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/google-auth?action=connect`}
-              className="btn-primary inline-block no-underline">
+            <button
+              type="button"
+              onClick={async () => {
+                const { data: { session } } = await supabase.auth.getSession()
+                if (!session?.access_token) return
+                const res = await fetch(
+                  `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/google-auth?action=connect`,
+                  { method: 'GET', headers: { Authorization: `Bearer ${session.access_token}` } }
+                )
+                if (res.ok) {
+                  const data = await res.json()
+                  if (data.url) window.location.href = data.url
+                }
+              }}
+              className="btn-primary inline-block">
               Conectar Google Calendar
-            </a>
+            </button>
           </div>
         )}
       </div>

@@ -194,7 +194,7 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
                 {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ date: date.toISOString() }),
+                  body: JSON.stringify({ date: date.toISOString(), event_type_id: currentType.id }),
                 }
               )
               const data = await res.json()
@@ -252,7 +252,7 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ date: selectedDate!.toISOString() }),
+            body: JSON.stringify({ date: selectedDate!.toISOString(), event_type_id: selectedType?.id }),
           }
         )
         const data = await res.json()
