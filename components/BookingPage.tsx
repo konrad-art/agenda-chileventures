@@ -143,11 +143,12 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
           return
         }
         setRescheduleData(data.booking)
+        // Reschedule GET only returns event_type_id/datetime/duration (no PII). The
+        // server already has the booking's name/email/notes by token and reuses them
+        // on POST, so we don't hydrate formData here.
         const match = eventTypes.find((t: EventType) => t.id === data.booking.event_type_id)
         if (match) {
           setSelectedType(match)
-          setFormData({ name: data.booking.name, email: data.booking.email, notes: data.booking.notes || '' })
-          setExtraData(data.booking.extras || {})
           setStep('date')
         }
       } catch {
@@ -263,7 +264,7 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
       setLoadingSlots(false)
     }
     fetchAvailability()
-  }, [selectedDate, config])
+  }, [selectedDate, config, selectedType?.id, monthBusyMap])
 
   const isFormValid = () => {
     if (!formData.name || !formData.email) return false
@@ -631,21 +632,22 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
                 </div>
 
                 {isReschedule ? (
-                  <>
-                    <div className="rounded-[18px] p-6 text-sm mb-6" style={{ background: 'var(--surface-alt)' }}>
-                      <div className="flex justify-between py-2"><span style={{ color: 'var(--text-tertiary)' }}>Nombre</span><span className="font-semibold">{formData.name}</span></div>
-                      <div className="flex justify-between py-2"><span style={{ color: 'var(--text-tertiary)' }}>Email</span><span className="font-semibold">{formData.email}</span></div>
-                      {extraData.startup && <div className="flex justify-between py-2"><span style={{ color: 'var(--text-tertiary)' }}>Startup</span><span className="font-semibold">{extraData.startup}</span></div>}
-                      {rescheduleData?.datetime && (
-                        <div className="flex justify-between py-2 mt-2 pt-3" style={{ borderTop: '1px solid var(--border)' }}>
-                          <span style={{ color: 'var(--text-tertiary)' }}>Fecha original</span>
-                          <span className="font-semibold" style={{ textDecoration: 'line-through', color: 'var(--text-tertiary)' }}>
-                            {new Date(rescheduleData.datetime).toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })} {new Date(rescheduleData.datetime).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                        </div>
-                      )}
+                  <div className="rounded-[18px] p-6 text-sm mb-6" style={{ background: 'var(--surface-alt)' }}>
+                    {rescheduleData?.datetime && (
+                      <div className="flex justify-between py-2">
+                        <span style={{ color: 'var(--text-tertiary)' }}>Fecha original</span>
+                        <span className="font-semibold" style={{ textDecoration: 'line-through', color: 'var(--text-tertiary)' }}>
+                          {new Date(rescheduleData.datetime).toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })} {new Date(rescheduleData.datetime).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex justify-between py-2 mt-2 pt-3" style={{ borderTop: '1px solid var(--border)' }}>
+                      <span style={{ color: 'var(--text-tertiary)' }}>Nueva fecha</span>
+                      <span className="font-semibold" style={{ color: 'var(--accent)' }}>
+                        {DAYS_ES[selectedDate.getDay()]} {selectedDate.getDate()}/{selectedDate.getMonth() + 1} · {selectedSlot.label}
+                      </span>
                     </div>
-                  </>
+                  </div>
                 ) : (
                   <>
                     <div className="text-xs font-semibold uppercase tracking-wider mb-3 mt-2" style={{ color: 'var(--text-tertiary)' }}>Tu información</div>
