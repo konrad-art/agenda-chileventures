@@ -158,7 +158,7 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
     loadReschedule()
   }, [rescheduleToken, eventTypes])
 
-  // Fetch availability for all working days in the visible month
+  // Fetch availability for all working days via single bulk endpoint
   useEffect(() => {
     if (!selectedType || !config || step === 'type' || step === 'success') return
 
@@ -169,66 +169,60 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
     async function fetchMonthAvailability() {
       setLoadingMonth(true)
       const year = calMonth.getFullYear()
-      const month = calMonth.getMonth()
-      const daysInMonth = new Date(year, month + 1, 0).getDate()
+      const month = calMonth.getMonth() + 1 // 1-based for the API
 
-      // Collect all working days that pass isDateAvailable
-      const workingDays: Date[] = []
-      for (let d = 1; d <= daysInMonth; d++) {
-        const date = new Date(year, month, d)
-        if (isDateAvailable(currentConfig, date)) {
-          workingDays.push(date)
-        }
-      }
-
-      // Fetch availability for all working days in parallel (batches of 8)
-      const busyMap: Record<string, BusySlot[]> = {}
-      const batchSize = 8
-      for (let i = 0; i < workingDays.length; i += batchSize) {
-        if (cancelled) return
-        const batch = workingDays.slice(i, i + batchSize)
-        const results = await Promise.all(
-          batch.map(async (date) => {
-            try {
-              const res = await fetch(
-                `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/availability`,
-                {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ date: date.toISOString(), event_type_id: currentType.id }),
-                }
-              )
-              const data = await res.json()
-              return { date, busy: data.busy || [] }
-            } catch {
-              return { date, busy: [] }
-            }
-          })
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/availability-month`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ year, month, event_type_id: currentType.id }),
+          }
         )
-        for (const { date, busy } of results) {
-          const key = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`
+        if (!res.ok) {
+          console.error('availability-month returned', res.status)
+          setMonthBusyMap({})
+          setFullyBookedDates(new Set())
+          setLoadingMonth(false)
+          return
+        }
+        const data = await res.json()
+        if (cancelled) return
+
+        // Convert API response { days: { "YYYY-MM-DD": [...busy] } }
+        // into the internal busyMap keyed by "year-month-day" (0-based month)
+        const busyMap: Record<string, BusySlot[]> = {}
+        const daysData: Record<string, BusySlot[]> = data.days || {}
+
+        for (const [dateStr, busy] of Object.entries(daysData)) {
+          const [y, m, d] = dateStr.split('-').map(Number)
+          const key = `${y}-${m - 1}-${d}` // month is 0-based in the internal key
           busyMap[key] = busy
         }
-      }
 
-      if (cancelled) return
-
-      // Determine which dates are fully booked
-      const fullyBooked = new Set<string>()
-      for (const date of workingDays) {
-        const key = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`
-        const dayBusy = busyMap[key] || []
-        const slots = generateTimeSlots(currentConfig, date, currentType.duration)
-        if (slots.length === 0) {
-          fullyBooked.add(key)
-          continue
+        // Determine which dates are fully booked
+        const fullyBooked = new Set<string>()
+        for (const [dateStr, busy] of Object.entries(daysData)) {
+          const [y, m, d] = dateStr.split('-').map(Number)
+          const key = `${y}-${m - 1}-${d}`
+          const date = new Date(y, m - 1, d)
+          const slots = generateTimeSlots(currentConfig, date, currentType.duration)
+          if (slots.length === 0) {
+            fullyBooked.add(key)
+            continue
+          }
+          const allBusy = slots.every(slot => isSlotBusy(busy, date, slot, currentType.duration))
+          if (allBusy) fullyBooked.add(key)
         }
-        const allBusy = slots.every(slot => isSlotBusy(dayBusy, date, slot, currentType.duration))
-        if (allBusy) fullyBooked.add(key)
-      }
 
-      setMonthBusyMap(busyMap)
-      setFullyBookedDates(fullyBooked)
+        setMonthBusyMap(busyMap)
+        setFullyBookedDates(fullyBooked)
+      } catch (err) {
+        console.error('Failed to fetch month availability:', err)
+        setMonthBusyMap({})
+        setFullyBookedDates(new Set())
+      }
       setLoadingMonth(false)
     }
 
