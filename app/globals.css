@@ -1,5 +1,9 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Instrument+Serif:ital@0;1&display=swap');
+
+@theme {
+  --font-display: 'Instrument Serif', 'Georgia', serif;
+}
 
 :root {
   /* ─── Premium B2C Palette ─── */
@@ -43,18 +47,30 @@
   /* Glass */
   --glass-bg: rgba(255, 255, 255, 0.8);
   --glass-border: rgba(226, 232, 240, 0.6);
+
+  /* Typography */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
 }
 
 * { box-sizing: border-box; }
 
 body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
+  font-family: var(--font-sans);
   background: var(--bg);
   color: var(--text);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   margin: 0;
   line-height: 1.5;
+}
+
+/* ─── Serif Accent Typography ─── */
+/* Tailwind 4 generates `font-display` utility from @theme --font-display.
+   The italic variant is available for decorative use. */
+.font-display-italic {
+  font-family: var(--font-display, 'Instrument Serif', serif);
+  font-weight: 400;
+  font-style: italic;
 }
 
 /* ─── Mesh Gradient Background ─── */
@@ -235,7 +251,7 @@ body {
   border: 1px solid var(--border);
   border-radius: 14px;
   background: var(--surface);
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-sans);
   font-size: 13px;
   font-weight: 600;
   color: var(--text);
@@ -269,7 +285,7 @@ body {
   padding: 12px 16px;
   border: 1px solid var(--border);
   border-radius: 12px;
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-sans);
   font-size: 14px;
   color: var(--text);
   background: var(--surface);
@@ -292,7 +308,7 @@ select.form-input { cursor: pointer; }
   border: none;
   border-top: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 12px;
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-sans);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
@@ -316,7 +332,7 @@ select.form-input { cursor: pointer; }
   color: var(--text-secondary);
   border: 1px solid var(--border);
   border-radius: 12px;
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-sans);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
@@ -347,7 +363,7 @@ select.form-input { cursor: pointer; }
   color: var(--text-secondary);
   cursor: pointer;
   transition: all 0.2s ease;
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-sans);
   font-size: 14px;
   padding: 0;
 }
@@ -364,7 +380,7 @@ select.form-input { cursor: pointer; }
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--text-secondary);
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-sans);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
@@ -393,7 +409,7 @@ select.form-input { cursor: pointer; }
   border: none;
   cursor: pointer;
   transition: all 0.2s ease;
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-sans);
   background: transparent;
   color: var(--text-secondary);
   white-space: nowrap;

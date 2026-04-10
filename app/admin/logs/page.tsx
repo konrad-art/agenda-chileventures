@@ -83,7 +83,7 @@ export default function LogsPage() {
     <div>
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
-        <h1 className="text-xl sm:text-2xl font-bold" style={{ letterSpacing: '-0.3px' }}>Monitoreo</h1>
+        <h1 className="text-xl sm:text-2xl font-display" style={{ letterSpacing: '-0.2px' }}>Monitoreo</h1>
         <button
           onClick={runHealthCheck}
           disabled={healthLoading}

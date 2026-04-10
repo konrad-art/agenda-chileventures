@@ -364,7 +364,7 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
           <div className="w-20 h-20 rounded-[20px] flex items-center justify-center text-4xl mx-auto mb-5" style={{ background: '#FFF5F5' }}>
             <span style={{ filter: 'drop-shadow(0 2px 4px rgba(194,80,80,0.2))' }}>&#9888;&#65039;</span>
           </div>
-          <div className="text-xl font-semibold mb-2">Enlace no válido</div>
+          <div className="text-xl font-display mb-2">Enlace no válido</div>
           <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>{rescheduleError}</div>
         </div>
       </div>
@@ -440,7 +440,7 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
           <div className="p-5 sm:p-8 border-b md:border-b-0 md:border-r flex flex-col gap-4 sm:gap-6" style={{ borderColor: 'var(--border)' }}>
             <CVMark size={44} />
             <div>
-              <div className="font-bold text-[17px]" style={{ letterSpacing: '-0.3px' }}>{config.name}</div>
+              <div className="font-display text-[22px]" style={{ letterSpacing: '-0.3px' }}>{config.name}</div>
               <div className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>{config.title}</div>
               <div className="text-xs mt-0.5 font-semibold uppercase tracking-wider" style={{ color: 'var(--accent)' }}>{config.org}</div>
             </div>
@@ -500,7 +500,7 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
                 <div className="empty-state-icon">
                   <span style={{ filter: 'drop-shadow(0 3px 6px rgba(0,0,0,0.08))' }}>&#128197;</span>
                 </div>
-                <div className="text-base font-semibold">Selecciona un tipo de reunión</div>
+                <div className="text-lg font-display">Selecciona un tipo de reunión</div>
                 <div className="text-sm mt-1.5 max-w-[260px]" style={{ color: 'var(--text-secondary)', lineHeight: 1.6 }}>
                   Elige una opción del panel {window.innerWidth < 768 ? 'superior' : 'izquierdo'} para comenzar
                 </div>
@@ -522,7 +522,7 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
 
                 <div className="flex items-center justify-between mb-5">
                   <div className="flex items-center gap-3">
-                    <div className="text-xl font-semibold" style={{ letterSpacing: '-0.3px' }}>
+                    <div className="text-xl font-display" style={{ letterSpacing: '-0.2px' }}>
                       {MONTHS_ES[calMonth.getMonth()]} {calMonth.getFullYear()}
                     </div>
                     {loadingMonth && (
@@ -613,7 +613,7 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
                 <button onClick={goBack} className="text-sm mb-4 cursor-pointer border-none bg-transparent flex items-center gap-1.5 group" style={{ color: 'var(--text-secondary)' }}>
                   <span className="inline-block transition-transform duration-200 group-hover:-translate-x-1">&larr;</span> Cambiar horario
                 </button>
-                <div className="text-xl font-semibold" style={{ letterSpacing: '-0.3px' }}>{isReschedule ? 'Confirmar reagendamiento' : 'Confirmar reunión'}</div>
+                <div className="text-xl font-display" style={{ letterSpacing: '-0.2px' }}>{isReschedule ? 'Confirmar reagendamiento' : 'Confirmar reunión'}</div>
 
                 {/* Selection summary pill */}
                 <div className="inline-flex items-center gap-2 px-4 py-2.5 rounded-[14px] mt-3 mb-6 text-sm font-semibold glass-card">
@@ -727,7 +727,7 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
                   </svg>
                 </div>
 
-                <div className="text-2xl font-bold mb-2 animate-slide-up" style={{ letterSpacing: '-0.3px', animationDelay: '0.2s', animationFillMode: 'backwards' }}>
+                <div className="text-2xl font-display mb-2 animate-slide-up" style={{ letterSpacing: '-0.2px', animationDelay: '0.2s', animationFillMode: 'backwards' }}>
                   {isReschedule ? '¡Reunión reagendada!' : '¡Reunión agendada!'}
                 </div>
                 <div className="text-sm max-w-[360px] mx-auto animate-slide-up" style={{ color: 'var(--text-secondary)', lineHeight: 1.6, animationDelay: '0.3s', animationFillMode: 'backwards' }}>

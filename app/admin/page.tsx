@@ -86,7 +86,7 @@ export default function AdminPage() {
 
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
         <div className="flex items-center gap-3">
-          <h1 className="text-xl sm:text-2xl font-bold" style={{ letterSpacing: '-0.3px' }}>Reservas</h1>
+          <h1 className="text-xl sm:text-2xl font-display" style={{ letterSpacing: '-0.2px' }}>Reservas</h1>
           <a href={process.env.NEXT_PUBLIC_SITE_URL || 'https://agenda-chileventures.vercel.app'} target="_blank" rel="noopener noreferrer"
             className="btn-sm no-underline inline-flex items-center gap-1.5 !py-2 !px-4">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>

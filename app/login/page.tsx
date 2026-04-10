@@ -46,7 +46,7 @@ export default function LoginPage() {
 
         <div className="glass-card p-6 sm:p-8 rounded-[20px]" style={{ boxShadow: 'var(--shadow-lg)' }}>
           <div className="text-center mb-7">
-            <div className="font-bold text-xl" style={{ letterSpacing: '-0.3px' }}>Admin Login</div>
+            <div className="font-display text-xl" style={{ letterSpacing: '-0.2px' }}>Admin Login</div>
             <div className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>Panel de gestión de agenda</div>
           </div>
 
