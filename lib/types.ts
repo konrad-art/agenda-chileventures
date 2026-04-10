@@ -12,6 +12,7 @@ export interface Config {
   google_calendar_token?: any
   google_calendar_id?: string
   notification_email?: string
+  day_schedules?: Record<string, { start: string; end: string }>
 }
 
 export interface EventType {

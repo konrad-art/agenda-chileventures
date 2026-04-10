@@ -7,17 +7,29 @@ export function generateTimeSlots(config: Config, date: Date, duration: number):
   const slots: TimeSlot[] = []
   const dayOfWeek = date.getDay()
   if (!config.working_days.includes(dayOfWeek)) return slots
-  const totalMinutes = config.end_hour * 60
-  for (let h = config.start_hour; h < config.end_hour; h++) {
-    for (let m = 0; m < 60; m += 30) {
-      const endMin = (h * 60 + m) + duration
-      if (endMin > totalMinutes) continue
-      slots.push({
-        hour: h,
-        minute: m,
-        label: `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`
-      })
-    }
+
+  // Use per-day schedule if available, otherwise fall back to global start/end
+  const daySchedule = config.day_schedules?.[String(dayOfWeek)]
+  let startMin: number, endMin: number
+  if (daySchedule) {
+    const [sh, sm] = daySchedule.start.split(':').map(Number)
+    const [eh, em] = daySchedule.end.split(':').map(Number)
+    startMin = sh * 60 + sm
+    endMin = eh * 60 + em
+  } else {
+    startMin = config.start_hour * 60
+    endMin = config.end_hour * 60
+  }
+
+  for (let min = startMin; min < endMin; min += 30) {
+    if (min + duration > endMin) continue
+    const h = Math.floor(min / 60)
+    const m = min % 60
+    slots.push({
+      hour: h,
+      minute: m,
+      label: `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`
+    })
   }
   return slots
 }

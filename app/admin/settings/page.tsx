@@ -9,6 +9,19 @@ type EditingEventType = Omit<EventType, 'sort_order'> & { sort_order?: number }
 
 const EMOJI_OPTIONS = ['👋', '🔍', '🏢', '🔄', '⚡', '📅', '💡', '🎯', '🚀', '💬', '🤝', '📊', '📞', '☕', '🧑‍💻', '📝']
 
+// 30-min time options from 06:00 to 23:30
+const TIME_OPTIONS = Array.from({ length: 36 }, (_, i) => {
+  const totalMin = (i + 12) * 30 // starts at 06:00
+  const h = Math.floor(totalMin / 60)
+  const m = totalMin % 60
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+})
+
+const DAYS_SHORT: Record<string, string> = {
+  '1': 'Lunes', '2': 'Martes', '3': 'Miércoles', '4': 'Jueves', '5': 'Viernes',
+  '6': 'Sábado', '0': 'Domingo',
+}
+
 function generateSlug(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 30) || 'new-type'
 }
@@ -35,7 +48,7 @@ export default function SettingsPage() {
 
   async function loadData() {
     const [configRes, typesRes] = await Promise.all([
-      supabase.from('config').select('id, name, title, org, timezone, working_days, start_hour, end_hour, buffer_minutes, max_days_ahead, google_calendar_id, notification_email').single(),
+      supabase.from('config').select('id, name, title, org, timezone, working_days, start_hour, end_hour, buffer_minutes, max_days_ahead, google_calendar_id, notification_email, day_schedules').single(),
       supabase.from('event_types').select('*').order('sort_order'),
     ])
     if (configRes.data) {
@@ -350,45 +363,83 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* Schedule */}
-      <div className="card p-5 sm:p-7">
-        <h2 className="text-lg font-semibold mb-5 flex items-center gap-2">&#9200; Horario</h2>
+      {/* Schedule & Working Days — unified per-day view */}
+      <div className="card p-5 sm:p-7 md:col-span-2">
+        <h2 className="text-lg font-semibold mb-5 flex items-center gap-2">&#9200; Horario semanal</h2>
+        <div className="flex flex-col gap-2">
+          {['1', '2', '3', '4', '5', '6', '0'].map(dayKey => {
+            const dayNum = parseInt(dayKey)
+            const isActive = config.working_days.includes(dayNum)
+            const schedule = config.day_schedules?.[dayKey] || { start: `${String(config.start_hour).padStart(2, '0')}:00`, end: `${String(config.end_hour).padStart(2, '0')}:00` }
+
+            return (
+              <div key={dayKey} className="flex items-center gap-3 py-2.5 px-3 rounded-[12px] transition-all duration-200" style={{ background: isActive ? 'transparent' : 'var(--surface-alt)', opacity: isActive ? 1 : 0.5 }}>
+                <button
+                  className="toggle-switch shrink-0"
+                  style={{ background: isActive ? 'var(--accent)' : 'var(--border-strong)' }}
+                  onClick={() => {
+                    const wd = isActive
+                      ? config.working_days.filter(x => x !== dayNum)
+                      : [...config.working_days, dayNum].sort()
+                    const updates: Partial<Config> = { working_days: wd }
+                    if (!isActive && !config.day_schedules?.[dayKey]) {
+                      updates.day_schedules = { ...(config.day_schedules || {}), [dayKey]: { start: `${String(config.start_hour).padStart(2, '0')}:00`, end: `${String(config.end_hour).padStart(2, '0')}:00` } } as any
+                    }
+                    saveConfig(updates)
+                  }}
+                >
+                  <div className="toggle-dot" style={{ left: isActive ? '22px' : '2px' }} />
+                </button>
+                <span className="text-sm font-semibold w-[90px] shrink-0">{DAYS_SHORT[dayKey]}</span>
+                {isActive ? (
+                  <div className="flex items-center gap-2 text-sm">
+                    <select
+                      className="form-input !w-[100px] !py-2 !text-sm shrink-0"
+                      value={schedule.start}
+                      onChange={e => {
+                        const newStart = e.target.value
+                        if (newStart >= schedule.end) return
+                        const updated = { ...(config.day_schedules || {}), [dayKey]: { ...schedule, start: newStart } }
+                        saveConfig({ day_schedules: updated } as any)
+                      }}
+                    >
+                      {TIME_OPTIONS.filter(t => t < schedule.end).map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                    <span style={{ color: 'var(--text-tertiary)' }}>—</span>
+                    <select
+                      className="form-input !w-[100px] !py-2 !text-sm shrink-0"
+                      value={schedule.end}
+                      onChange={e => {
+                        const newEnd = e.target.value
+                        if (newEnd <= schedule.start) return
+                        const updated = { ...(config.day_schedules || {}), [dayKey]: { ...schedule, end: newEnd } }
+                        saveConfig({ day_schedules: updated } as any)
+                      }}
+                    >
+                      {TIME_OPTIONS.filter(t => t > schedule.start).map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                  </div>
+                ) : (
+                  <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>No disponible</span>
+                )}
+              </div>
+            )
+          })}
+        </div>
+
+        <div className="gradient-divider my-5" />
+
         <div className="flex flex-col gap-4">
           {[
-            { label: 'Desde', value: config.start_hour, key: 'start_hour', options: Array.from({ length: 24 }, (_, i) => ({ v: i, l: `${String(i).padStart(2, '0')}:00` })) },
-            { label: 'Hasta', value: config.end_hour, key: 'end_hour', options: Array.from({ length: 24 }, (_, i) => ({ v: i, l: `${String(i).padStart(2, '0')}:00` })) },
             { label: 'Buffer', value: config.buffer_minutes, key: 'buffer_minutes', options: [0, 5, 10, 15, 20, 30, 45, 60].map(m => ({ v: m, l: `${m} min` })), hint: 'entre reuniones' },
             { label: 'Ventana', value: config.max_days_ahead, key: 'max_days_ahead', options: [7, 14, 21, 30, 45, 60, 90].map(d => ({ v: d, l: `${d} días` })), hint: 'hacia adelante' },
           ].map(row => (
             <div key={row.key} className="flex items-center gap-3">
-              <span className="text-sm font-medium w-[72px] shrink-0" style={{ color: 'var(--text-secondary)' }}>{row.label}</span>
-              <select className="form-input !w-[130px] shrink-0" value={row.value} onChange={e => saveConfig({ [row.key]: parseInt(e.target.value) } as any)}>
+              <span className="text-sm font-medium w-[90px] shrink-0" style={{ color: 'var(--text-secondary)' }}>{row.label}</span>
+              <select className="form-input !w-[110px] shrink-0" value={row.value} onChange={e => saveConfig({ [row.key]: parseInt(e.target.value) } as any)}>
                 {row.options.map(o => <option key={o.v} value={o.v}>{o.l}</option>)}
               </select>
               {row.hint && <span className="text-xs hidden sm:inline" style={{ color: 'var(--text-tertiary)' }}>{row.hint}</span>}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Working Days */}
-      <div className="card p-5 sm:p-7 md:col-span-2">
-        <h2 className="text-lg font-semibold mb-5 flex items-center gap-2">&#128198; Días laborales</h2>
-        <div className="flex gap-2 flex-wrap">
-          {DAYS_ES.map((d, i) => (
-            <div key={i}
-              className={`px-4 py-2.5 rounded-[12px] border text-sm font-semibold cursor-pointer transition-all duration-200 ${config.working_days.includes(i) ? 'text-white' : 'text-[var(--text-secondary)] hover:border-[var(--border-strong)]'}`}
-              style={config.working_days.includes(i)
-                ? { background: 'linear-gradient(180deg, #3498d4 0%, var(--accent) 100%)', borderColor: 'var(--accent)', boxShadow: 'var(--shadow-accent)' }
-                : { background: 'var(--surface)', borderColor: 'var(--border)' }
-              }
-              onClick={() => {
-                const wd = config.working_days.includes(i)
-                  ? config.working_days.filter(x => x !== i)
-                  : [...config.working_days, i].sort()
-                saveConfig({ working_days: wd })
-              }}>
-              {d}
             </div>
           ))}
         </div>

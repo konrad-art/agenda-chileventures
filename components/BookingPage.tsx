@@ -109,7 +109,7 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
   useEffect(() => {
     async function load() {
       const [configRes, typesRes] = await Promise.all([
-        supabase.from('config').select('id, name, title, org, timezone, working_days, start_hour, end_hour, buffer_minutes, max_days_ahead').single(),
+        supabase.from('config').select('id, name, title, org, timezone, working_days, start_hour, end_hour, buffer_minutes, max_days_ahead, day_schedules').single(),
         supabase.from('event_types').select('id, name, emoji, duration, description, extra_fields, sort_order').order('sort_order'),
       ])
       if (configRes.data) setConfig(configRes.data)
@@ -453,42 +453,63 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
               </div>
             )}
 
-            <div className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-tertiary)' }}>
-              {isReschedule ? 'Reunión' : filterType ? 'Reunión seleccionada' : 'Tipo de reunión'}
-            </div>
-
-            <div className="flex md:flex-col gap-2.5 overflow-x-auto md:overflow-x-visible pb-2 md:pb-0 stagger-children">
-              {displayTypes.map((et) => (
-                <div
-                  key={et.id}
-                  className={`event-card ${isReschedule ? 'event-card-locked' : ''} flex items-center gap-3.5 p-4 rounded-[16px] border-2 min-w-[200px] md:min-w-0 shrink-0 md:shrink ${isReschedule ? '' : 'cursor-pointer'} ${selectedType?.id === et.id ? 'border-[var(--accent)]' : 'border-[var(--border)] hover:border-[var(--border-strong)]'}`}
-                  style={selectedType?.id === et.id ? { background: 'var(--accent-light)', boxShadow: '0 4px 16px rgba(45,140,194,0.08)' } : {}}
-                  onClick={() => {
-                    if (isReschedule) return
-                    setSelectedType(et)
-                    setStep('date')
-                    setSelectedSlot(null)
-                    setExtraData({})
-                    setBusySlots([])
-                    setSelectedDate(null)
-                    setMonthBusyMap({})
-                    setFullyBookedDates(new Set())
-                  }}
-                >
-                  <div className={`text-2xl w-12 h-12 flex items-center justify-center rounded-[14px] ${selectedType?.id === et.id ? 'bg-[rgba(45,140,194,0.12)]' : 'bg-[var(--surface-alt)]'}`}
-                    style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.06))' }}>
-                    {et.emoji}
+            {/* When type is pre-selected (direct link or reschedule), show compact summary */}
+            {(filterType || isReschedule) && selectedType ? (
+              <>
+                <div className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-tertiary)' }}>
+                  {isReschedule ? 'Reunión' : 'Reunión seleccionada'}
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="text-2xl w-10 h-10 flex items-center justify-center rounded-[12px] shrink-0 bg-[var(--surface-alt)]">
+                    {selectedType.emoji}
                   </div>
                   <div className="min-w-0">
-                    <div className="font-semibold text-[15px]">{et.name}</div>
-                    <div className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>{et.duration} min</div>
-                    {et.description && (
-                      <div className="text-xs mt-1 truncate" style={{ color: 'var(--text-tertiary)' }}>{et.description}</div>
+                    <div className="font-semibold text-[15px]">{selectedType.name}</div>
+                    <div className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>{selectedType.duration} min</div>
+                    {selectedType.description && (
+                      <div className="text-xs mt-1.5 leading-relaxed" style={{ color: 'var(--text-tertiary)' }}>{selectedType.description}</div>
                     )}
                   </div>
                 </div>
-              ))}
-            </div>
+              </>
+            ) : (
+              <>
+                <div className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-tertiary)' }}>
+                  Tipo de reunión
+                </div>
+                <div className="flex md:flex-col gap-2.5 overflow-x-auto md:overflow-x-visible pb-2 md:pb-0 stagger-children">
+                  {displayTypes.map((et) => (
+                    <div
+                      key={et.id}
+                      className={`event-card flex items-center gap-3.5 p-4 rounded-[16px] border-2 min-w-[200px] md:min-w-0 shrink-0 md:shrink cursor-pointer ${selectedType?.id === et.id ? 'border-[var(--accent)]' : 'border-[var(--border)] hover:border-[var(--border-strong)]'}`}
+                      style={selectedType?.id === et.id ? { background: 'var(--accent-light)', boxShadow: '0 4px 16px rgba(45,140,194,0.08)' } : {}}
+                      onClick={() => {
+                        setSelectedType(et)
+                        setStep('date')
+                        setSelectedSlot(null)
+                        setExtraData({})
+                        setBusySlots([])
+                        setSelectedDate(null)
+                        setMonthBusyMap({})
+                        setFullyBookedDates(new Set())
+                      }}
+                    >
+                      <div className={`text-2xl w-12 h-12 flex items-center justify-center rounded-[14px] ${selectedType?.id === et.id ? 'bg-[rgba(45,140,194,0.12)]' : 'bg-[var(--surface-alt)]'}`}
+                        style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.06))' }}>
+                        {et.emoji}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="font-semibold text-[15px]">{et.name}</div>
+                        <div className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>{et.duration} min</div>
+                        {et.description && (
+                          <div className="text-xs mt-1 truncate" style={{ color: 'var(--text-tertiary)' }}>{et.description}</div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
 
           {/* ─── Main Area ─── */}
@@ -502,7 +523,7 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
                 </div>
                 <div className="text-lg font-display">Selecciona un tipo de reunión</div>
                 <div className="text-sm mt-1.5 max-w-[260px]" style={{ color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-                  Elige una opción del panel {window.innerWidth < 768 ? 'superior' : 'izquierdo'} para comenzar
+                  Elige una opción del panel <span className="hidden md:inline">izquierdo</span><span className="md:hidden">superior</span> para comenzar
                 </div>
                 <div className="flex items-center gap-2 mt-4 text-xs font-medium" style={{ color: 'var(--text-tertiary)' }}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
@@ -758,7 +779,7 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
                 <div className="animate-slide-up" style={{ animationDelay: '0.6s', animationFillMode: 'backwards' }}>
                   <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-[12px] mt-4 text-sm font-semibold" style={{ background: 'var(--success-light)', color: 'var(--success)' }}>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                    Recibirás una invitación de Google Calendar en {formData.email}
+                    Recibirás una invitación de Google Calendar{formData.email ? ` en ${formData.email}` : ''}
                   </div>
                 </div>
 
