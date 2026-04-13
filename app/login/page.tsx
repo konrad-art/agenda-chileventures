@@ -41,7 +41,7 @@ export default function LoginPage() {
       <div className="w-full max-w-sm animate-scale-in">
         {/* Logo */}
         <div className="flex justify-center mb-8">
-          <CVLogoFull height={20} dark={true} />
+          <CVLogoFull height={20} />
         </div>
 
         <div className="glass-card p-6 sm:p-8 rounded-[20px]" style={{ boxShadow: 'var(--shadow-lg)' }}>

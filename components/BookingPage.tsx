@@ -404,7 +404,7 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
       {/* ─── Floating Navigation Bar ─── */}
       <div className="sticky top-0 z-50 floating-nav mx-2 sm:mx-4 mt-2 sm:mt-4 rounded-2xl px-4 sm:px-6 py-3 sm:py-3.5 flex items-center justify-between">
         <div className="flex items-center gap-3 sm:gap-4">
-          <CVLogoFull height={16} dark={true} />
+          <CVLogoFull height={16} />
           <div className="h-5 w-px hidden sm:block" style={{ background: 'var(--border)' }} />
           <div className="text-xs font-semibold uppercase tracking-widest hidden sm:block" style={{ color: 'var(--text-tertiary)' }}>Agenda</div>
         </div>
