@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 
 interface LogEntry {
@@ -20,29 +20,37 @@ interface HealthCheck {
   checks: { name: string; status: 'ok' | 'error'; detail?: string }[]
 }
 
+const LEVELS = ['all', 'error', 'warn', 'info'] as const
+const FUNCTIONS = ['all', 'book', 'reschedule', 'availability', 'availability-month', 'google-auth', 'health'] as const
+const AUTO_REFRESH_MS = 30_000
+
 export default function LogsPage() {
   const [logs, setLogs] = useState<LogEntry[]>([])
   const [loading, setLoading] = useState(true)
-  const [filter, setFilter] = useState<'all' | 'error' | 'warn' | 'info'>('all')
+  const [filter, setFilter] = useState<(typeof LEVELS)[number]>('all')
+  const [fnFilter, setFnFilter] = useState<(typeof FUNCTIONS)[number]>('all')
+  const [search, setSearch] = useState('')
   const [health, setHealth] = useState<HealthCheck | null>(null)
   const [healthLoading, setHealthLoading] = useState(false)
   const [errorCount24h, setErrorCount24h] = useState(0)
+  const [autoRefresh, setAutoRefresh] = useState(false)
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  const loadLogs = async () => {
+  const loadLogs = useCallback(async () => {
     let query = supabase
       .from('app_logs')
       .select('*')
       .order('created_at', { ascending: false })
-      .limit(50)
+      .limit(100)
 
-    if (filter !== 'all') {
-      query = query.eq('level', filter)
-    }
+    if (filter !== 'all') query = query.eq('level', filter)
+    if (fnFilter !== 'all') query = query.eq('function_name', fnFilter)
+    if (search.trim()) query = query.ilike('message', `%${search.trim()}%`)
 
     const { data } = await query
     if (data) setLogs(data)
     setLoading(false)
-  }
+  }, [filter, fnFilter, search])
 
   const loadErrorCount = async () => {
     const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
@@ -51,7 +59,6 @@ export default function LogsPage() {
       .select('id', { count: 'exact', head: true })
       .eq('level', 'error')
       .gte('created_at', dayAgo)
-
     setErrorCount24h(count || 0)
   }
 
@@ -65,37 +72,70 @@ export default function LogsPage() {
       const data = await res.json()
       setHealth(data)
     } catch {
-      setHealth({ status: 'degraded', timestamp: new Date().toISOString(), checks: [{ name: 'connectivity', status: 'error', detail: 'Could not reach health endpoint' }] })
+      setHealth({
+        status: 'degraded',
+        timestamp: new Date().toISOString(),
+        checks: [{ name: 'connectivity', status: 'error', detail: 'No se pudo conectar al endpoint' }],
+      })
     }
     setHealthLoading(false)
   }
 
-  useEffect(() => { setLoading(true); loadLogs() }, [filter])
-  useEffect(() => { loadErrorCount(); runHealthCheck() }, [])
+  // Load logs when filters change (debounce search)
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      setLoading(true)
+      loadLogs()
+    }, search ? 300 : 0)
+    return () => clearTimeout(timeout)
+  }, [filter, fnFilter, search, loadLogs])
 
-  const levelColor = (level: string) => {
-    if (level === 'error') return { bg: '#FFF5F5', color: '#C25050', border: '#E8B4B4' }
-    if (level === 'warn') return { bg: '#FFF8E1', color: '#B8860B', border: '#E8D4A0' }
-    return { bg: 'var(--surface-alt)', color: 'var(--text-secondary)', border: 'var(--border)' }
-  }
+  // Initial load
+  useEffect(() => {
+    loadErrorCount()
+    runHealthCheck()
+  }, [])
+
+  // Auto-refresh
+  useEffect(() => {
+    if (intervalRef.current) clearInterval(intervalRef.current)
+    if (autoRefresh) {
+      intervalRef.current = setInterval(() => {
+        loadLogs()
+        loadErrorCount()
+      }, AUTO_REFRESH_MS)
+    }
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current) }
+  }, [autoRefresh, loadLogs])
 
   return (
     <div>
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
         <h1 className="text-xl sm:text-2xl font-display" style={{ letterSpacing: '-0.2px' }}>Monitoreo</h1>
-        <button
-          onClick={runHealthCheck}
-          disabled={healthLoading}
-          className="btn-secondary text-sm"
-        >
-          {healthLoading ? 'Verificando...' : 'Health Check'}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setAutoRefresh(v => !v)}
+            className={`px-3 py-1.5 rounded-[10px] text-xs font-medium border transition-all duration-200 cursor-pointer ${
+              autoRefresh
+                ? 'bg-[var(--success-light)] text-[var(--success)] border-[var(--success)]'
+                : 'bg-[var(--surface-alt)] text-[var(--text-secondary)] border-[var(--border)]'
+            }`}
+          >
+            {autoRefresh ? '● Live' : '○ Live'}
+          </button>
+          <button
+            onClick={runHealthCheck}
+            disabled={healthLoading}
+            className="btn-secondary text-sm"
+          >
+            {healthLoading ? 'Verificando...' : 'Health Check'}
+          </button>
+        </div>
       </div>
 
       {/* Health Status + Error Count */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6 stagger-children">
-        {/* Health Status */}
         <div className="stat-card">
           <div className="stat-icon" style={{ background: health?.status === 'healthy' ? 'var(--success-light)' : 'var(--error-light)' }}>
             {health?.status === 'healthy' ? '\u2705' : '\u26A0\uFE0F'}
@@ -112,7 +152,6 @@ export default function LogsPage() {
           )}
         </div>
 
-        {/* Error Count */}
         <div className="stat-card">
           <div className="stat-icon" style={{ background: errorCount24h > 0 ? 'var(--error-light)' : 'var(--surface-alt)' }}>
             {errorCount24h > 0 ? '\uD83D\uDD34' : '\uD83D\uDFE2'}
@@ -123,7 +162,6 @@ export default function LogsPage() {
           <div className="stat-label">Errores (24h)</div>
         </div>
 
-        {/* Last Check */}
         <div className="stat-card">
           <div className="stat-icon" style={{ background: 'var(--accent-subtle)' }}>{'\uD83D\uDD51'}</div>
           <div className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
@@ -145,12 +183,12 @@ export default function LogsPage() {
         </div>
       )}
 
-      {/* Log Filter */}
-      <div className="flex items-center gap-2 mb-4">
-        <div className="text-sm font-semibold hidden sm:block" style={{ color: 'var(--text-secondary)' }}>Filtrar:</div>
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 mb-4">
+        {/* Level filter */}
         <div className="flex gap-0.5 sm:gap-1 p-1 rounded-[12px]" style={{ background: 'var(--surface-alt)' }}>
-          {(['all', 'error', 'warn', 'info'] as const).map(f => (
-            <button key={f} onClick={() => { setLoading(true); setFilter(f) }}
+          {LEVELS.map(f => (
+            <button key={f} onClick={() => setFilter(f)}
               className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-[9px] text-xs sm:text-sm font-medium border-none cursor-pointer transition-all duration-200 ${
                 filter === f
                   ? 'bg-[var(--surface)] text-[var(--text)]'
@@ -161,6 +199,29 @@ export default function LogsPage() {
             </button>
           ))}
         </div>
+
+        {/* Function filter */}
+        <select
+          value={fnFilter}
+          onChange={e => setFnFilter(e.target.value as (typeof FUNCTIONS)[number])}
+          className="px-3 py-2 rounded-[10px] text-xs sm:text-sm border cursor-pointer"
+          style={{ background: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--text)' }}
+        >
+          <option value="all">Todas las funciones</option>
+          {FUNCTIONS.filter(f => f !== 'all').map(f => (
+            <option key={f} value={f}>{f}</option>
+          ))}
+        </select>
+
+        {/* Search */}
+        <input
+          type="text"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Buscar en mensajes..."
+          className="px-3 py-2 rounded-[10px] text-xs sm:text-sm border w-full sm:w-[220px]"
+          style={{ background: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--text)' }}
+        />
       </div>
 
       {/* Logs */}
@@ -180,7 +241,6 @@ export default function LogsPage() {
       ) : (
         <div className="flex flex-col gap-2 stagger-children">
           {logs.map(log => {
-            const colors = levelColor(log.level)
             const dt = new Date(log.created_at)
             return (
               <div key={log.id} className="rounded-[14px] border px-3 sm:px-4 py-3 flex items-start gap-3 sm:gap-4 transition-all duration-200 hover:shadow-sm"
@@ -191,15 +251,21 @@ export default function LogsPage() {
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium">{log.message}</div>
                   <div className="flex items-center gap-2 sm:gap-3 mt-1 text-xs flex-wrap" style={{ color: 'var(--text-tertiary)' }}>
-                    <span>{log.function_name}</span>
+                    <span className="font-mono">{log.function_name}</span>
                     <span>{dt.toLocaleString('es-CL')}</span>
+                    {log.request_id && <span className="font-mono hidden sm:inline">#{log.request_id}</span>}
                     {log.ip && <span className="hidden sm:inline">{log.ip}</span>}
                   </div>
                   {log.context && Object.keys(log.context).length > 0 && (
-                    <div className="mt-2 text-xs p-2 rounded-[10px] font-mono overflow-x-auto"
-                      style={{ background: 'var(--surface-alt)', color: 'var(--text-secondary)' }}>
-                      {JSON.stringify(log.context, null, 2)}
-                    </div>
+                    <details className="mt-2">
+                      <summary className="text-xs cursor-pointer" style={{ color: 'var(--text-tertiary)' }}>
+                        Contexto
+                      </summary>
+                      <div className="mt-1 text-xs p-2 rounded-[10px] font-mono overflow-x-auto whitespace-pre-wrap break-all"
+                        style={{ background: 'var(--surface-alt)', color: 'var(--text-secondary)' }}>
+                        {JSON.stringify(log.context, null, 2)}
+                      </div>
+                    </details>
                   )}
                 </div>
               </div>
