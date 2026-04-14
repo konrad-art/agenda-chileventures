@@ -9,6 +9,7 @@ export interface Config {
   end_hour: number
   buffer_minutes: number
   max_days_ahead: number
+  min_advance_hours: number
   google_calendar_token?: any
   google_calendar_id?: string
   notification_email?: string

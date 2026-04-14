@@ -109,7 +109,7 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
   useEffect(() => {
     async function load() {
       const [configRes, typesRes] = await Promise.all([
-        supabase.from('config').select('id, name, title, org, timezone, working_days, start_hour, end_hour, buffer_minutes, max_days_ahead, day_schedules').single(),
+        supabase.from('config').select('id, name, title, org, timezone, working_days, start_hour, end_hour, buffer_minutes, max_days_ahead, min_advance_hours, day_schedules').single(),
         supabase.from('event_types').select('id, name, emoji, duration, description, extra_fields, sort_order').order('sort_order'),
       ])
       if (configRes.data) setConfig(configRes.data)

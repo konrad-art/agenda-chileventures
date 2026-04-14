@@ -48,7 +48,7 @@ export default function SettingsPage() {
 
   async function loadData() {
     const [configRes, typesRes] = await Promise.all([
-      supabase.from('config').select('id, name, title, org, timezone, working_days, start_hour, end_hour, buffer_minutes, max_days_ahead, google_calendar_id, notification_email, day_schedules').single(),
+      supabase.from('config').select('id, name, title, org, timezone, working_days, start_hour, end_hour, buffer_minutes, max_days_ahead, min_advance_hours, google_calendar_id, notification_email, day_schedules').single(),
       supabase.from('event_types').select('*').order('sort_order'),
     ])
     if (configRes.data) {
@@ -432,6 +432,7 @@ export default function SettingsPage() {
         <div className="flex flex-col gap-4">
           {[
             { label: 'Buffer', value: config.buffer_minutes, key: 'buffer_minutes', options: [0, 5, 10, 15, 20, 30, 45, 60].map(m => ({ v: m, l: `${m} min` })), hint: 'entre reuniones' },
+            { label: 'Anticipación', value: config.min_advance_hours ?? 2, key: 'min_advance_hours', options: [0, 1, 2, 4, 6, 12, 24, 48, 72].map(h => ({ v: h, l: h === 0 ? 'Sin mínimo' : h === 1 ? '1 hora' : `${h} horas` })), hint: 'mínima para agendar' },
             { label: 'Ventana', value: config.max_days_ahead, key: 'max_days_ahead', options: [7, 14, 21, 30, 45, 60, 90].map(d => ({ v: d, l: `${d} días` })), hint: 'hacia adelante' },
           ].map(row => (
             <div key={row.key} className="flex items-center gap-3">
