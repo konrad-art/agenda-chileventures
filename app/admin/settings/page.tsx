@@ -106,6 +106,7 @@ export default function SettingsPage() {
       extra_fields: [],
       is_active: true,
       sort_order: maxOrder + 1,
+      min_advance_hours: null,
     })
     setIsNewType(true)
   }
@@ -166,6 +167,8 @@ export default function SettingsPage() {
       extra_fields: editingType.extra_fields.filter(f => f.label.trim()),
       is_active: editingType.is_active ?? true,
       sort_order: editingType.sort_order ?? eventTypes.length,
+      // null = inherit the global config.min_advance_hours default
+      min_advance_hours: editingType.min_advance_hours ?? null,
     }
 
     if (isNewType) {
@@ -260,6 +263,34 @@ export default function SettingsPage() {
             <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-secondary)' }}>Descripción</label>
             <input className="form-input" value={editingType.description || ''} onChange={e => updateEditingField('description', e.target.value)}
               placeholder="Ej: Primera conversación para conocer tu startup" />
+          </div>
+
+          {/* Min advance hours — per-event-type override of the global default */}
+          <div className="mb-6">
+            <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+              Anticipación mínima
+            </label>
+            <div className="flex items-center gap-3 flex-wrap">
+              <select
+                className="form-input !w-[180px]"
+                value={editingType.min_advance_hours ?? ''}
+                onChange={e => updateEditingField('min_advance_hours', e.target.value === '' ? null : parseInt(e.target.value))}
+              >
+                <option value="">Usar global ({config.min_advance_hours ?? 2}h)</option>
+                <option value="0">Sin mínimo</option>
+                <option value="1">1 hora</option>
+                <option value="2">2 horas</option>
+                <option value="4">4 horas</option>
+                <option value="6">6 horas</option>
+                <option value="12">12 horas</option>
+                <option value="24">24 horas</option>
+                <option value="48">48 horas</option>
+                <option value="72">72 horas</option>
+              </select>
+              <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                Cuánto antes debe agendarse este tipo de cita
+              </span>
+            </div>
           </div>
 
           {/* Active toggle */}
@@ -432,7 +463,7 @@ export default function SettingsPage() {
         <div className="flex flex-col gap-4">
           {[
             { label: 'Buffer', value: config.buffer_minutes, key: 'buffer_minutes', options: [0, 5, 10, 15, 20, 30, 45, 60].map(m => ({ v: m, l: `${m} min` })), hint: 'entre reuniones' },
-            { label: 'Anticipación', value: config.min_advance_hours ?? 2, key: 'min_advance_hours', options: [0, 1, 2, 4, 6, 12, 24, 48, 72].map(h => ({ v: h, l: h === 0 ? 'Sin mínimo' : h === 1 ? '1 hora' : `${h} horas` })), hint: 'mínima para agendar' },
+            { label: 'Anticipación', value: config.min_advance_hours ?? 2, key: 'min_advance_hours', options: [0, 1, 2, 4, 6, 12, 24, 48, 72].map(h => ({ v: h, l: h === 0 ? 'Sin mínimo' : h === 1 ? '1 hora' : `${h} horas` })), hint: 'default — overridable por tipo' },
             { label: 'Ventana', value: config.max_days_ahead, key: 'max_days_ahead', options: [7, 14, 21, 30, 45, 60, 90].map(d => ({ v: d, l: `${d} días` })), hint: 'hacia adelante' },
           ].map(row => (
             <div key={row.key} className="flex items-center gap-3">
@@ -478,6 +509,9 @@ export default function SettingsPage() {
                   </div>
                   <div className="text-xs mt-0.5 truncate" style={{ color: 'var(--text-tertiary)' }}>
                     /{et.id} &middot; {et.extra_fields.length} campo{et.extra_fields.length !== 1 ? 's' : ''} extra
+                    {typeof et.min_advance_hours === 'number' && (
+                      <> &middot; {et.min_advance_hours === 0 ? 'sin anticipación' : `${et.min_advance_hours}h anticipación`}</>
+                    )}
                   </div>
                 </div>
               </div>

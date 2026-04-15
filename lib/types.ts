@@ -26,6 +26,9 @@ export interface EventType {
   extra_fields: ExtraField[]
   is_active?: boolean
   sort_order: number
+  // Per-event-type override for the global config.min_advance_hours.
+  // null/undefined = inherit the global default.
+  min_advance_hours?: number | null
 }
 
 export interface ExtraField {
