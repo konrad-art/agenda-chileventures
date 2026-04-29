@@ -5,6 +5,10 @@ import { supabase } from '@/lib/supabase'
 import { Config, EventType, Booking, TimeSlot } from '@/lib/types'
 import { DAYS_ES, MONTHS_ES, generateTimeSlots, isSameDay, isDateAvailable, getCalendarDays } from '@/lib/helpers'
 import { CVLogoFull, CVMark } from '@/components/CVLogo'
+import TimezoneSelector from '@/components/TimezoneSelector'
+import { detectTimezone, wallTimeInTzToDate, formatTimeInTz, sameTz, HOST_TZ_FALLBACK } from '@/lib/timezone'
+
+const TZ_STORAGE_KEY = 'agenda_guest_tz_v1'
 
 interface BusySlot {
   start: string
@@ -97,6 +101,23 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
   const [loadingSlots, setLoadingSlots] = useState(false)
   const [rescheduleData, setRescheduleData] = useState<any>(null)
   const [rescheduleError, setRescheduleError] = useState('')
+
+  // Guest timezone: detected from browser, persisted in localStorage, overridable.
+  const [guestTz, setGuestTzState] = useState<string>(HOST_TZ_FALLBACK)
+  useEffect(() => {
+    try {
+      const saved = typeof window !== 'undefined' ? localStorage.getItem(TZ_STORAGE_KEY) : null
+      setGuestTzState(saved || detectTimezone())
+    } catch {
+      setGuestTzState(detectTimezone())
+    }
+  }, [])
+  const setGuestTz = (tz: string) => {
+    setGuestTzState(tz)
+    try { localStorage.setItem(TZ_STORAGE_KEY, tz) } catch {}
+  }
+  const hostTz = config?.timezone || HOST_TZ_FALLBACK
+  const tzDiffer = !sameTz(guestTz, hostTz)
 
   // Month-level availability: dates with no free slots are disabled in the calendar
   const [monthBusyMap, setMonthBusyMap] = useState<Record<string, BusySlot[]>>({})
@@ -275,8 +296,17 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
     setSubmitting(true)
     setError('')
 
-    const dt = new Date(selectedDate)
-    dt.setHours(selectedSlot.hour, selectedSlot.minute, 0, 0)
+    // Interpret slot.hour/minute as wall-clock time in the HOST timezone
+    // (e.g. "10:00 in Chile"), not the guest's browser TZ. Otherwise a guest
+    // booking from NYC sends 10:00 NYC = 13:00 Chile, which is wrong.
+    const dt = wallTimeInTzToDate(
+      selectedDate.getFullYear(),
+      selectedDate.getMonth() + 1,
+      selectedDate.getDate(),
+      selectedSlot.hour,
+      selectedSlot.minute,
+      hostTz
+    )
 
     try {
       if (isReschedule) {
@@ -288,6 +318,7 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
             body: JSON.stringify({
               token: rescheduleToken,
               new_datetime: dt.toISOString(),
+              user_timezone: guestTz,
             }),
           }
         )
@@ -310,6 +341,7 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
               email: formData.email,
               notes: formData.notes,
               extras: extraData,
+              user_timezone: guestTz,
             }),
           }
         )
@@ -589,8 +621,11 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
                   const slots = generateTimeSlots(config, selectedDate, selectedType.duration)
                   return (
                     <div className="flex-1 animate-slide-up">
-                      <div className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--text-tertiary)' }}>
-                        {DAYS_ES[selectedDate.getDay()]} {selectedDate.getDate()} de {MONTHS_ES[selectedDate.getMonth()]}
+                      <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
+                        <div className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-tertiary)' }}>
+                          {DAYS_ES[selectedDate.getDay()]} {selectedDate.getDate()} de {MONTHS_ES[selectedDate.getMonth()]}
+                        </div>
+                        <TimezoneSelector value={guestTz} onChange={setGuestTz} hostTz={hostTz} />
                       </div>
 
                       {loadingSlots ? (
@@ -607,11 +642,30 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
                             const busy = isSlotBusy(busySlots, selectedDate, slot, selectedType.duration)
                             const isSel = selectedSlot?.label === slot.label
                             if (busy) return null
+                            // The slot is anchored in HOST tz (config.timezone). Render the
+                            // label in guest tz when they differ.
+                            const slotInstant = wallTimeInTzToDate(
+                              selectedDate.getFullYear(),
+                              selectedDate.getMonth() + 1,
+                              selectedDate.getDate(),
+                              slot.hour, slot.minute, hostTz
+                            )
+                            const guestLabel = formatTimeInTz(slotInstant, guestTz)
                             return (
                               <button key={i}
                                 className={`slot-btn ${isSel ? 'selected' : ''}`}
-                                onClick={() => { setSelectedSlot(slot); setStep('form') }}>
-                                {slot.label}
+                                onClick={() => { setSelectedSlot(slot); setStep('form') }}
+                                title={tzDiffer ? `${slot.label} hora de Santiago` : undefined}>
+                                {tzDiffer ? (
+                                  <div className="flex flex-col items-center leading-tight">
+                                    <span>{guestLabel}</span>
+                                    <span style={{ fontSize: 10, fontWeight: 500, opacity: 0.65, marginTop: 2 }}>
+                                      {slot.label} CL
+                                    </span>
+                                  </div>
+                                ) : (
+                                  slot.label
+                                )}
                               </button>
                             )
                           })}
@@ -637,14 +691,31 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
                 <div className="text-xl font-display" style={{ letterSpacing: '-0.2px' }}>{isReschedule ? 'Confirmar reagendamiento' : 'Confirmar reunión'}</div>
 
                 {/* Selection summary pill */}
-                <div className="inline-flex items-center gap-2 px-4 py-2.5 rounded-[14px] mt-3 mb-6 text-sm font-semibold glass-card">
-                  <span>{selectedType.emoji}</span>
-                  <span style={{ color: 'var(--text-secondary)' }}>{selectedType.name}</span>
-                  <span style={{ color: 'var(--border-strong)' }}>&middot;</span>
-                  <span style={{ color: 'var(--text-secondary)' }}>{selectedType.duration} min</span>
-                  <span style={{ color: 'var(--border-strong)' }}>&middot;</span>
-                  <span style={{ color: 'var(--accent)' }}>{DAYS_ES[selectedDate.getDay()]} {selectedDate.getDate()}/{selectedDate.getMonth() + 1} &middot; {selectedSlot.label}</span>
-                </div>
+                {(() => {
+                  const slotInstant = wallTimeInTzToDate(
+                    selectedDate.getFullYear(), selectedDate.getMonth() + 1, selectedDate.getDate(),
+                    selectedSlot.hour, selectedSlot.minute, hostTz
+                  )
+                  const guestLabel = formatTimeInTz(slotInstant, guestTz)
+                  return (
+                    <>
+                      <div className="inline-flex items-center gap-2 px-4 py-2.5 rounded-[14px] mt-3 mb-2 text-sm font-semibold glass-card">
+                        <span>{selectedType.emoji}</span>
+                        <span style={{ color: 'var(--text-secondary)' }}>{selectedType.name}</span>
+                        <span style={{ color: 'var(--border-strong)' }}>&middot;</span>
+                        <span style={{ color: 'var(--text-secondary)' }}>{selectedType.duration} min</span>
+                        <span style={{ color: 'var(--border-strong)' }}>&middot;</span>
+                        <span style={{ color: 'var(--accent)' }}>{DAYS_ES[selectedDate.getDay()]} {selectedDate.getDate()}/{selectedDate.getMonth() + 1} &middot; {tzDiffer ? guestLabel : selectedSlot.label}</span>
+                      </div>
+                      {tzDiffer && (
+                        <div className="text-xs mb-6" style={{ color: 'var(--text-tertiary)' }}>
+                          Equivale a las {selectedSlot.label} hora de Santiago.
+                        </div>
+                      )}
+                      {!tzDiffer && <div className="mb-6" />}
+                    </>
+                  )
+                })()}
 
                 {isReschedule ? (
                   <div className="rounded-[18px] p-6 text-sm mb-6" style={{ background: 'var(--surface-alt)' }}>
@@ -652,14 +723,31 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
                       <div className="flex justify-between py-2">
                         <span style={{ color: 'var(--text-tertiary)' }}>Fecha original</span>
                         <span className="font-semibold" style={{ textDecoration: 'line-through', color: 'var(--text-tertiary)' }}>
-                          {new Date(rescheduleData.datetime).toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })} {new Date(rescheduleData.datetime).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}
+                          {new Intl.DateTimeFormat('es-CL', { day: 'numeric', month: 'short', timeZone: guestTz }).format(new Date(rescheduleData.datetime))}{' '}
+                          {formatTimeInTz(rescheduleData.datetime, guestTz)}
                         </span>
                       </div>
                     )}
                     <div className="flex justify-between py-2 mt-2 pt-3" style={{ borderTop: '1px solid var(--border)' }}>
                       <span style={{ color: 'var(--text-tertiary)' }}>Nueva fecha</span>
-                      <span className="font-semibold" style={{ color: 'var(--accent)' }}>
-                        {DAYS_ES[selectedDate.getDay()]} {selectedDate.getDate()}/{selectedDate.getMonth() + 1} · {selectedSlot.label}
+                      <span className="font-semibold text-right" style={{ color: 'var(--accent)' }}>
+                        {(() => {
+                          const slotInstant = wallTimeInTzToDate(
+                            selectedDate.getFullYear(), selectedDate.getMonth() + 1, selectedDate.getDate(),
+                            selectedSlot.hour, selectedSlot.minute, hostTz
+                          )
+                          const gl = formatTimeInTz(slotInstant, guestTz)
+                          return (
+                            <>
+                              {DAYS_ES[selectedDate.getDay()]} {selectedDate.getDate()}/{selectedDate.getMonth() + 1} · {tzDiffer ? gl : selectedSlot.label}
+                              {tzDiffer && (
+                                <span className="block text-xs font-normal mt-0.5" style={{ color: 'var(--text-tertiary)' }}>
+                                  {selectedSlot.label} hora de Santiago
+                                </span>
+                              )}
+                            </>
+                          )
+                        })()}
                       </span>
                     </div>
                   </div>
@@ -759,7 +847,28 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
                 <div className="max-w-[340px] w-full mx-auto mt-6 rounded-[18px] p-6 text-left text-sm animate-slide-up" style={{ background: 'var(--surface-alt)', animationDelay: '0.4s', animationFillMode: 'backwards' }}>
                   <div className="flex justify-between py-2"><span style={{ color: 'var(--text-tertiary)' }}>Tipo</span><span className="font-semibold">{selectedType.emoji} {selectedType.name}</span></div>
                   <div className="flex justify-between py-2"><span style={{ color: 'var(--text-tertiary)' }}>Fecha</span><span className="font-semibold">{DAYS_ES[selectedDate.getDay()]} {selectedDate.getDate()} de {MONTHS_ES[selectedDate.getMonth()]}</span></div>
-                  <div className="flex justify-between py-2"><span style={{ color: 'var(--text-tertiary)' }}>Hora</span><span className="font-semibold">{selectedSlot.label} ({config.timezone})</span></div>
+                  <div className="flex justify-between py-2">
+                    <span style={{ color: 'var(--text-tertiary)' }}>Hora</span>
+                    <span className="font-semibold text-right">
+                      {(() => {
+                        const slotInstant = wallTimeInTzToDate(
+                          selectedDate.getFullYear(), selectedDate.getMonth() + 1, selectedDate.getDate(),
+                          selectedSlot.hour, selectedSlot.minute, hostTz
+                        )
+                        const gl = formatTimeInTz(slotInstant, guestTz)
+                        return tzDiffer ? (
+                          <>
+                            {gl}
+                            <span className="block text-xs font-normal mt-0.5" style={{ color: 'var(--text-tertiary)' }}>
+                              {selectedSlot.label} hora de Santiago
+                            </span>
+                          </>
+                        ) : (
+                          <>{selectedSlot.label} <span className="text-xs font-normal" style={{ color: 'var(--text-tertiary)' }}>({hostTz})</span></>
+                        )
+                      })()}
+                    </span>
+                  </div>
                   <div className="flex justify-between py-2"><span style={{ color: 'var(--text-tertiary)' }}>Duración</span><span className="font-semibold">{selectedType.duration} min</span></div>
                 </div>
 
