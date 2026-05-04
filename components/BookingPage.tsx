@@ -15,9 +15,15 @@ interface BusySlot {
   end: string
 }
 
-function isSlotBusy(busySlots: BusySlot[], date: Date, slot: TimeSlot, duration: number): boolean {
-  const slotStart = new Date(date)
-  slotStart.setHours(slot.hour, slot.minute, 0, 0)
+function isSlotBusy(busySlots: BusySlot[], date: Date, slot: TimeSlot, duration: number, hostTz: string): boolean {
+  // slot.hour/minute represent wall-clock time in HOST timezone (Chile),
+  // not the visitor's browser TZ. setHours would interpret them as browser
+  // local — that desyncs the frontend availability check from the backend's
+  // (which uses UTC) for any visitor in a timezone other than Chile.
+  const slotStart = wallTimeInTzToDate(
+    date.getFullYear(), date.getMonth() + 1, date.getDate(),
+    slot.hour, slot.minute, hostTz
+  )
   const slotEnd = new Date(slotStart.getTime() + duration * 60000)
   return busySlots.some((b) => {
     const bStart = new Date(b.start)
@@ -233,7 +239,7 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
             fullyBooked.add(key)
             continue
           }
-          const allBusy = slots.every(slot => isSlotBusy(busy, date, slot, currentType.duration))
+          const allBusy = slots.every(slot => isSlotBusy(busy, date, slot, currentType.duration, currentConfig.timezone || HOST_TZ_FALLBACK))
           if (allBusy) fullyBooked.add(key)
         }
 
@@ -639,7 +645,7 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
                       ) : (
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-2.5 max-h-[240px] sm:max-h-[280px] overflow-y-auto slots-scroll pr-1 stagger-children">
                           {slots.map((slot, i) => {
-                            const busy = isSlotBusy(busySlots, selectedDate, slot, selectedType.duration)
+                            const busy = isSlotBusy(busySlots, selectedDate, slot, selectedType.duration, hostTz)
                             const isSel = selectedSlot?.label === slot.label
                             if (busy) return null
                             // The slot is anchored in HOST tz (config.timezone). Render the
@@ -669,7 +675,7 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
                               </button>
                             )
                           })}
-                          {slots.every((slot) => isSlotBusy(busySlots, selectedDate, slot, selectedType.duration)) && (
+                          {slots.every((slot) => isSlotBusy(busySlots, selectedDate, slot, selectedType.duration, hostTz)) && (
                             <div className="col-span-2 sm:col-span-3 text-center py-8 text-sm animate-fade-in" style={{ color: 'var(--text-tertiary)' }}>
                               No hay horarios disponibles este día
                             </div>
