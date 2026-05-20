@@ -7,6 +7,8 @@ import { DAYS_ES, MONTHS_ES, generateTimeSlots, isSameDay, isDateAvailable, getC
 import { CVLogoFull, CVMark } from '@/components/CVLogo'
 import TimezoneSelector from '@/components/TimezoneSelector'
 import { detectTimezone, wallTimeInTzToDate, formatTimeInTz, sameTz, HOST_TZ_FALLBACK } from '@/lib/timezone'
+import { useIsAdmin } from '@/lib/useIsAdmin'
+import ProposedSlotsModal from '@/components/ProposedSlotsModal'
 
 const TZ_STORAGE_KEY = 'agenda_guest_tz_v1'
 
@@ -81,12 +83,29 @@ function SkeletonCalendar() {
   )
 }
 
+// When BookingPage is opened from a proposed-slot email link, the date+time
+// is already locked in and we skip the event-type and calendar steps entirely.
+// The `proposedLinkSlug` is sent back to the book function so the backend can
+// validate the slot was part of the proposal and mark the link as used.
+export interface PreselectedSlot {
+  datetime: string          // ISO UTC instant
+  eventTypeId: string       // forces selectedType
+  proposedLinkSlug: string  // sent to /book for validation + bookkeeping
+  guestNameHint?: string | null
+  guestEmailHint?: string | null
+}
+
 interface Props {
   filterType?: string
   rescheduleToken?: string
+  preselectedSlot?: PreselectedSlot
 }
 
-export default function BookingPage({ filterType, rescheduleToken }: Props) {
+export default function BookingPage({ filterType, rescheduleToken, preselectedSlot }: Props) {
+  const { isAdmin } = useIsAdmin()
+  // Which event type is currently the target of the admin-only "Link Email" modal.
+  const [linkEmailFor, setLinkEmailFor] = useState<EventType | null>(null)
+
   const [config, setConfig] = useState<Config | null>(null)
   const [eventTypes, setEventTypes] = useState<EventType[]>([])
   const [loading, setLoading] = useState(true)
@@ -142,7 +161,41 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
       if (configRes.data) setConfig(configRes.data)
       if (typesRes.data) {
         setEventTypes(typesRes.data)
-        if (filterType) {
+        // Preselected (proposed-link) wins over filterType: jump straight to the form,
+        // type+date+slot already known.
+        if (preselectedSlot) {
+          const match = typesRes.data.find((t: EventType) => t.id === preselectedSlot.eventTypeId)
+          const hostTzVal = configRes.data?.timezone || HOST_TZ_FALLBACK
+          if (match) {
+            // Convert the UTC instant back to host-TZ wall-clock parts so it
+            // lines up with how slots are represented everywhere else in this
+            // component (TimeSlot { hour, minute } is host-TZ wall time).
+            const d = new Date(preselectedSlot.datetime)
+            const parts: Record<string, string> = {}
+            const dtf = new Intl.DateTimeFormat('en-US', {
+              timeZone: hostTzVal, hourCycle: 'h23',
+              year: 'numeric', month: '2-digit', day: '2-digit',
+              hour: '2-digit', minute: '2-digit',
+            })
+            for (const p of dtf.formatToParts(d)) parts[p.type] = p.value
+            const wallH = parts.hour === '24' ? 0 : Number(parts.hour)
+            const wallMin = Number(parts.minute)
+            setSelectedType(match)
+            setSelectedDate(new Date(Number(parts.year), Number(parts.month) - 1, Number(parts.day)))
+            setSelectedSlot({
+              hour: wallH,
+              minute: wallMin,
+              label: `${String(wallH).padStart(2, '0')}:${String(wallMin).padStart(2, '0')}`,
+            })
+            setStep('form')
+            // Prefill the form with whatever hints the host included in the proposal.
+            setFormData((prev) => ({
+              ...prev,
+              name: preselectedSlot.guestNameHint || prev.name,
+              email: preselectedSlot.guestEmailHint || prev.email,
+            }))
+          }
+        } else if (filterType) {
           const match = typesRes.data.find((t: EventType) => t.id === filterType)
           if (match) {
             setSelectedType(match)
@@ -153,7 +206,7 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
       setLoading(false)
     }
     load()
-  }, [filterType])
+  }, [filterType, preselectedSlot])
 
   // Load reschedule booking data
   useEffect(() => {
@@ -348,6 +401,10 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
               notes: formData.notes,
               extras: extraData,
               user_timezone: guestTz,
+              // When the guest arrived via a proposed-slot email, pass the slug
+              // so the book function can verify the slot was offered and mark
+              // the link as used. Fase 5 will wire the backend validation.
+              ...(preselectedSlot ? { proposed_link_slug: preselectedSlot.proposedLinkSlug } : {}),
             }),
           }
         )
@@ -433,9 +490,11 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
 
   const displayTypes = (isReschedule && selectedType)
     ? eventTypes.filter(t => t.id === selectedType.id)
-    : filterType
-      ? eventTypes.filter(t => t.id === filterType)
-      : eventTypes
+    : preselectedSlot && selectedType
+      ? eventTypes.filter(t => t.id === selectedType.id)
+      : filterType
+        ? eventTypes.filter(t => t.id === filterType)
+        : eventTypes
 
   return (
     <div className="min-h-screen mesh-bg">
@@ -450,8 +509,8 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
         {step !== 'type' && (
           <div className="progress-steps hidden sm:flex">
             {stepLabels.map((label, i) => {
-              const isActive = i === (filterType || isReschedule ? stepIndex - 1 : stepIndex)
-              const isDone = i < (filterType || isReschedule ? stepIndex - 1 : stepIndex)
+              const isActive = i === (filterType || isReschedule || preselectedSlot ? stepIndex - 1 : stepIndex)
+              const isDone = i < (filterType || isReschedule || preselectedSlot ? stepIndex - 1 : stepIndex)
               return (
                 <div key={label} className="flex items-center">
                   {i > 0 && <div className={`progress-step-line ${isDone ? 'done' : ''}`} />}
@@ -492,7 +551,7 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
             )}
 
             {/* When type is pre-selected (direct link or reschedule), show compact summary */}
-            {(filterType || isReschedule) && selectedType ? (
+            {(filterType || isReschedule || preselectedSlot) && selectedType ? (
               <>
                 <div className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-tertiary)' }}>
                   {isReschedule ? 'Reunión' : 'Reunión seleccionada'}
@@ -519,7 +578,7 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
                   {displayTypes.map((et) => (
                     <div
                       key={et.id}
-                      className={`event-card flex items-center gap-3.5 p-4 rounded-[16px] border-2 min-w-[200px] md:min-w-0 shrink-0 md:shrink cursor-pointer ${selectedType?.id === et.id ? 'border-[var(--accent)]' : 'border-[var(--border)] hover:border-[var(--border-strong)]'}`}
+                      className={`event-card relative flex items-center gap-3.5 p-4 rounded-[16px] border-2 min-w-[200px] md:min-w-0 shrink-0 md:shrink cursor-pointer ${selectedType?.id === et.id ? 'border-[var(--accent)]' : 'border-[var(--border)] hover:border-[var(--border-strong)]'}`}
                       style={selectedType?.id === et.id ? { background: 'var(--accent-light)', boxShadow: '0 4px 16px rgba(45,140,194,0.08)' } : {}}
                       onClick={() => {
                         setSelectedType(et)
@@ -543,6 +602,19 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
                           <div className="text-xs mt-1 truncate" style={{ color: 'var(--text-tertiary)' }}>{et.description}</div>
                         )}
                       </div>
+                      {/* Admin-only: open Link-Email modal. stopPropagation so the
+                          parent card's onClick (which starts the booking flow) doesn't fire. */}
+                      {isAdmin && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setLinkEmailFor(et) }}
+                          title="Crear propuesta de horarios para pegar en Gmail"
+                          aria-label="Crear link email"
+                          className="absolute top-2 right-2 w-7 h-7 rounded-[8px] cursor-pointer flex items-center justify-center border"
+                          style={{ background: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -691,9 +763,13 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
             {/* Step: Form */}
             {step === 'form' && selectedSlot && selectedType && selectedDate && (
               <div className="animate-slide-left">
-                <button onClick={goBack} className="text-sm mb-4 cursor-pointer border-none bg-transparent flex items-center gap-1.5 group" style={{ color: 'var(--text-secondary)' }}>
-                  <span className="inline-block transition-transform duration-200 group-hover:-translate-x-1">&larr;</span> Cambiar horario
-                </button>
+                {/* Hide "back" when arriving via a proposed-link email — there's
+                    nothing to go back to (no prior calendar step). */}
+                {!preselectedSlot && (
+                  <button onClick={goBack} className="text-sm mb-4 cursor-pointer border-none bg-transparent flex items-center gap-1.5 group" style={{ color: 'var(--text-secondary)' }}>
+                    <span className="inline-block transition-transform duration-200 group-hover:-translate-x-1">&larr;</span> Cambiar horario
+                  </button>
+                )}
                 <div className="text-xl font-display" style={{ letterSpacing: '-0.2px' }}>{isReschedule ? 'Confirmar reagendamiento' : 'Confirmar reunión'}</div>
 
                 {/* Selection summary pill */}
@@ -906,6 +982,16 @@ export default function BookingPage({ filterType, rescheduleToken }: Props) {
           </div>
         </div>
       </div>
+
+      {/* Admin-only Link-Email proposal modal. Rendered at component root so it
+          floats above the booking UI regardless of which step is active. */}
+      {isAdmin && linkEmailFor && config && (
+        <ProposedSlotsModal
+          eventType={linkEmailFor}
+          config={config}
+          onClose={() => setLinkEmailFor(null)}
+        />
+      )}
     </div>
   )
 }

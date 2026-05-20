@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { Config, EventType, ExtraField } from '@/lib/types'
 import { DAYS_ES } from '@/lib/helpers'
+import ProposedSlotsModal from '@/components/ProposedSlotsModal'
 
 type EditingEventType = Omit<EventType, 'sort_order'> & { sort_order?: number }
 
@@ -39,6 +40,9 @@ export default function SettingsPage() {
   const [isNewType, setIsNewType] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
   const [typeSaving, setTypeSaving] = useState(false)
+
+  // Which event type is currently the target of the "Link Email" modal (null = closed)
+  const [linkEmailFor, setLinkEmailFor] = useState<EventType | null>(null)
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://agenda-chileventures.vercel.app'
 
@@ -534,6 +538,13 @@ export default function SettingsPage() {
                     <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copiar</>
                   )}
                 </button>
+                {/* Link Email — open proposed-slots modal */}
+                <button onClick={() => setLinkEmailFor(et)}
+                  className="btn-sm inline-flex items-center gap-1"
+                  title="Crear propuesta de horarios para pegar en Gmail">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                  Link email
+                </button>
                 <div className="w-px h-6 mx-1 hidden sm:block" style={{ background: 'var(--border)' }} />
                 <button onClick={() => toggleActive(et)} className="btn-sm">
                   {et.is_active ? 'Desactivar' : 'Activar'}
@@ -596,6 +607,15 @@ export default function SettingsPage() {
           </div>
         )}
       </div>
+
+      {/* Link-Email proposal modal (admin) */}
+      {linkEmailFor && config && (
+        <ProposedSlotsModal
+          eventType={linkEmailFor}
+          config={config}
+          onClose={() => setLinkEmailFor(null)}
+        />
+      )}
     </div>
   )
 }

@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import path from "path";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://dewvghsgsdhaggesvkhx.supabase.co";
 const isDev = process.env.NODE_ENV !== "production";
@@ -10,6 +11,12 @@ const devOnlyScriptRelax = isDev ? " 'unsafe-ev" + "al'" : "";
 const scriptSrc = `script-src 'self' 'unsafe-inline'${devOnlyScriptRelax}`;
 
 const nextConfig: NextConfig = {
+  // Pin the workspace root so Turbopack doesn't latch onto stray lockfiles
+  // (e.g. an empty /Users/konrad/package-lock.json) and resolve modules from
+  // the wrong node_modules. Without this, module resolution silently breaks.
+  turbopack: {
+    root: path.resolve(__dirname),
+  },
   async headers() {
     return [
       {
