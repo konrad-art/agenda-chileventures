@@ -621,8 +621,7 @@ export default function ProposedSlotsModal({ eventType, config, onClose }: Props
               )}
             </button>
 
-            {/* Secondary: just the URL, for cases where you want to share the
-                bare link (e.g. WhatsApp, SMS, internal note). */}
+            {/* Secondary: just the URL */}
             <details className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
               <summary className="cursor-pointer select-none py-1">Solo necesito el link</summary>
               <div className="flex items-stretch gap-2 mt-2">
@@ -636,6 +635,14 @@ export default function ProposedSlotsModal({ eventType, config, onClose }: Props
                   {copied ? '¡Copiado!' : 'Copiar'}
                 </button>
               </div>
+              {/* Dev-only hint: the email URL always points to prod (agenda.chileventures.vc)
+                  so external recipients can open it. To test locally, replace the domain. */}
+              {typeof window !== 'undefined' && window.location.hostname === 'localhost' && (
+                <div className="mt-2 text-[11px] px-2 py-1.5 rounded-[6px]" style={{ background: 'var(--surface-alt)', color: 'var(--text-tertiary)' }}>
+                  💡 En local: el link apunta a producción (para que los destinatarios puedan abrirlo).
+                  Para probar en este browser, cambia el dominio a <code>localhost:3000</code>.
+                </div>
+              )}
             </details>
 
             {error && (
