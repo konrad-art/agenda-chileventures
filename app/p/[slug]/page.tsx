@@ -37,16 +37,27 @@ interface ProposalData {
 const DAYS_ES_LONG = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
 const MONTHS_ES_LONG = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
 
-// Spanish "weekday day month" label in a given TZ
+// Intl.DateTimeFormat construction is one of the more expensive ops in V8 (ICU
+// locale load). Cache one instance per TZ at module scope so the hot path on a
+// page with 5 slots × re-renders doesn't pay it repeatedly.
+const _dtfByTz = new Map<string, Intl.DateTimeFormat>()
+function dtfFor(tz: string): Intl.DateTimeFormat {
+  let dtf = _dtfByTz.get(tz)
+  if (!dtf) {
+    dtf = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit',
+    })
+    _dtfByTz.set(tz, dtf)
+  }
+  return dtf
+}
+
 function formatDateLabel(iso: string, tz: string): string {
   const d = new Date(iso)
-  const dtf = new Intl.DateTimeFormat('en-US', {
-    timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit',
-  })
   const parts: Record<string, string> = {}
-  for (const p of dtf.formatToParts(d)) parts[p.type] = p.value
+  for (const p of dtfFor(tz).formatToParts(d)) parts[p.type] = p.value
   const y = Number(parts.year), m = Number(parts.month), day = Number(parts.day)
-  // Reconstruct DOW at noon UTC anchored on the same wall date
+  // DOW from a noon-UTC anchor matches the wall-clock DOW regardless of host TZ
   const dow = new Date(Date.UTC(y, m - 1, day, 12)).getUTCDay()
   return `${DAYS_ES_LONG[dow]} ${day} de ${MONTHS_ES_LONG[m - 1]}`
 }

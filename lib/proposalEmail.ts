@@ -44,33 +44,33 @@ interface FormattedSlot {
   timeLabel: string
 }
 
+// Cache one Intl.DateTimeFormat per TZ — constructor is one of the more expensive
+// ops in V8 (ICU locale load) and we call this once per slot per email build.
+const _slotDtfByTz = new Map<string, Intl.DateTimeFormat>()
+function slotDtfFor(tz: string): Intl.DateTimeFormat {
+  let dtf = _slotDtfByTz.get(tz)
+  if (!dtf) {
+    dtf = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz, weekday: 'short',
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+    })
+    _slotDtfByTz.set(tz, dtf)
+  }
+  return dtf
+}
+
 // Format a UTC instant as wall-clock parts in `tz` using Spanish short labels.
+// DOW is re-derived from a noon-UTC anchor so we don't depend on browser `es`
+// short-weekday support.
 function formatSlot(iso: string, tz: string): FormattedSlot {
   const d = new Date(iso)
-  // Pull the date+time parts as observed in `tz`. h23 keeps "00..23".
   const parts: Record<string, string> = {}
-  const dtf = new Intl.DateTimeFormat('en-US', {
-    timeZone: tz,
-    weekday: 'short',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23',
-  })
-  for (const p of dtf.formatToParts(d)) parts[p.type] = p.value
-
-  // Spanish day-of-week from the date's day index in `tz`
-  // (we ask en-US for parts so we don't have to depend on browser es support
-  // for the short-form weekday; we re-derive it from a UTC reconstruction).
+  for (const p of slotDtfFor(tz).formatToParts(d)) parts[p.type] = p.value
   const year = Number(parts.year)
   const month = Number(parts.month)
   const day = Number(parts.day)
-  // Reconstruct a UTC-noon-anchored Date for that wall date — its UTC day-of-week
-  // matches the wall-clock day-of-week regardless of host TZ.
   const dow = new Date(Date.UTC(year, month - 1, day, 12)).getUTCDay()
-
   return {
     iso,
     dayLabel: `${DAYS_ES_SHORT[dow]} ${day} ${MONTHS_ES_SHORT[month - 1]}`,

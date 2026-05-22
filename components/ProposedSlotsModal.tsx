@@ -1,14 +1,9 @@
 'use client'
 
 // ProposedSlotsModal
-// ---------------------------------------------------------------------------
-// Admin-only modal that lets the host assemble a 2-5 slot proposal for an
-// event type and generate a short URL to paste into an email. Phase 2 just
-// returns the plain URL; Phase 3 will add HTML + clipboard write.
-//
-// Reuses the same availability + generateTimeSlots logic as BookingPage so
-// the host can't accidentally propose times they're busy for. Slot wall-times
-// are converted to UTC via wallTimeInTzToDate (host TZ-aware).
+// Admin-only modal: assemble a 2-5 slot proposal and generate a paste-into-Gmail
+// HTML block + landing URL. Slot wall-times convert to UTC via wallTimeInTzToDate
+// so the proposal is timezone-correct regardless of the host's browser TZ.
 
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { Config, EventType, TimeSlot } from '@/lib/types'
@@ -91,10 +86,10 @@ export default function ProposedSlotsModal({ eventType, config, onClose }: Props
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<{ slug: string; url: string; expires_at: string } | null>(null)
   const [copied, setCopied] = useState(false)
+  const [copiedRich, setCopiedRich] = useState(false)
 
   const modalRef = useRef<HTMLDivElement>(null)
 
-  // Close on Esc, and lock body scroll while open
   useEffect(() => {
     const prev = document.body.style.overflow
     document.body.style.overflow = 'hidden'
@@ -302,8 +297,6 @@ export default function ProposedSlotsModal({ eventType, config, onClose }: Props
     })
   }, [result, selectedSlots, hostTz, eventType.id, eventType.name, eventType.duration, note])
 
-  const [copiedRich, setCopiedRich] = useState(false)
-
   async function handleCopyEmail() {
     if (!emailBlock) return
     const ok = await copyProposalToClipboard(emailBlock.html, emailBlock.text)
@@ -315,7 +308,6 @@ export default function ProposedSlotsModal({ eventType, config, onClose }: Props
     }
   }
 
-  // ─── Render ───
   return (
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 animate-fade-in"
