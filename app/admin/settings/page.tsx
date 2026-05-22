@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { Config, EventType, ExtraField } from '@/lib/types'
-import { DAYS_ES } from '@/lib/helpers'
 import ProposedSlotsModal from '@/components/ProposedSlotsModal'
 
 type EditingEventType = Omit<EventType, 'sort_order'> & { sort_order?: number }
@@ -31,7 +30,6 @@ export default function SettingsPage() {
   const [config, setConfig] = useState<Config | null>(null)
   const [eventTypes, setEventTypes] = useState<EventType[]>([])
   const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [gcalConnected, setGcalConnected] = useState(false)
 
@@ -47,7 +45,7 @@ export default function SettingsPage() {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://agenda-chileventures.vercel.app'
 
   useEffect(() => {
-    loadData()
+    loadData() // eslint-disable-line react-hooks/immutability
   }, [])
 
   async function loadData() {
@@ -78,11 +76,9 @@ export default function SettingsPage() {
 
   const saveConfig = async (updates: Partial<Config>) => {
     if (!config) return
-    setSaving(true)
     const updated = { ...config, ...updates }
     setConfig(updated)
     await supabase.from('config').update(updates).eq('id', config.id)
-    setSaving(false)
   }
 
   const copyLink = (path: string, id: string) => {
@@ -120,6 +116,7 @@ export default function SettingsPage() {
     setIsNewType(false)
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const updateEditingField = (key: keyof EditingEventType, value: any) => {
     if (!editingType) return
     const updated = { ...editingType, [key]: value }
@@ -178,7 +175,7 @@ export default function SettingsPage() {
     if (isNewType) {
       await supabase.from('event_types').insert(data)
     } else {
-      const { id, ...updateData } = data
+      const { id: _id, ...updateData } = data
       await supabase.from('event_types').update(updateData).eq('id', editingType.id)
     }
 
@@ -418,7 +415,7 @@ export default function SettingsPage() {
                       : [...config.working_days, dayNum].sort()
                     const updates: Partial<Config> = { working_days: wd }
                     if (!isActive && !config.day_schedules?.[dayKey]) {
-                      updates.day_schedules = { ...(config.day_schedules || {}), [dayKey]: { start: `${String(config.start_hour).padStart(2, '0')}:00`, end: `${String(config.end_hour).padStart(2, '0')}:00` } } as any
+                      updates.day_schedules = { ...(config.day_schedules || {}), [dayKey]: { start: `${String(config.start_hour).padStart(2, '0')}:00`, end: `${String(config.end_hour).padStart(2, '0')}:00` } } as Record<string, { start: string; end: string }>
                     }
                     saveConfig(updates)
                   }}
@@ -435,7 +432,7 @@ export default function SettingsPage() {
                         const newStart = e.target.value
                         if (newStart >= schedule.end) return
                         const updated = { ...(config.day_schedules || {}), [dayKey]: { ...schedule, start: newStart } }
-                        saveConfig({ day_schedules: updated } as any)
+                        saveConfig({ day_schedules: updated as Record<string, { start: string; end: string }> })
                       }}
                     >
                       {TIME_OPTIONS.filter(t => t < schedule.end).map(t => <option key={t} value={t}>{t}</option>)}
@@ -448,7 +445,7 @@ export default function SettingsPage() {
                         const newEnd = e.target.value
                         if (newEnd <= schedule.start) return
                         const updated = { ...(config.day_schedules || {}), [dayKey]: { ...schedule, end: newEnd } }
-                        saveConfig({ day_schedules: updated } as any)
+                        saveConfig({ day_schedules: updated as Record<string, { start: string; end: string }> })
                       }}
                     >
                       {TIME_OPTIONS.filter(t => t > schedule.start).map(t => <option key={t} value={t}>{t}</option>)}
@@ -472,7 +469,7 @@ export default function SettingsPage() {
           ].map(row => (
             <div key={row.key} className="flex items-center gap-3">
               <span className="text-sm font-medium w-[90px] shrink-0" style={{ color: 'var(--text-secondary)' }}>{row.label}</span>
-              <select className="form-input !w-[110px] shrink-0" value={row.value} onChange={e => saveConfig({ [row.key]: parseInt(e.target.value) } as any)}>
+              <select className="form-input !w-[110px] shrink-0" value={row.value} onChange={e => saveConfig({ [row.key]: parseInt(e.target.value) } as Partial<Config>)}>
                 {row.options.map(o => <option key={o.v} value={o.v}>{o.l}</option>)}
               </select>
               {row.hint && <span className="text-xs hidden sm:inline" style={{ color: 'var(--text-tertiary)' }}>{row.hint}</span>}

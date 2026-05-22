@@ -92,7 +92,7 @@ export default function LogsPage() {
 
   // Initial load
   useEffect(() => {
-    loadErrorCount()
+    loadErrorCount() // eslint-disable-line react-hooks/set-state-in-effect
     runHealthCheck()
   }, [])
 

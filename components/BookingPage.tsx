@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
-import { Config, EventType, Booking, TimeSlot } from '@/lib/types'
+import { Config, EventType, TimeSlot } from '@/lib/types'
 import { DAYS_ES, MONTHS_ES, generateTimeSlots, isSameDay, isDateAvailable, getCalendarDays } from '@/lib/helpers'
 import { CVLogoFull, CVMark } from '@/components/CVLogo'
 import TimezoneSelector from '@/components/TimezoneSelector'
@@ -124,7 +124,7 @@ export default function BookingPage({ filterType, rescheduleToken, preselectedSl
 
   const [busySlots, setBusySlots] = useState<BusySlot[]>([])
   const [loadingSlots, setLoadingSlots] = useState(false)
-  const [rescheduleData, setRescheduleData] = useState<any>(null)
+  const [rescheduleData, setRescheduleData] = useState<{ datetime?: string; event_type_id?: string; duration?: number } | null>(null)
   const [rescheduleError, setRescheduleError] = useState('')
 
   // Guest timezone: detected from browser, persisted in localStorage, overridable.
@@ -132,9 +132,9 @@ export default function BookingPage({ filterType, rescheduleToken, preselectedSl
   useEffect(() => {
     try {
       const saved = typeof window !== 'undefined' ? localStorage.getItem(TZ_STORAGE_KEY) : null
-      setGuestTzState(saved || detectTimezone())
+      setGuestTzState(saved || detectTimezone()) // eslint-disable-line react-hooks/set-state-in-effect
     } catch {
-      setGuestTzState(detectTimezone())
+      setGuestTzState(detectTimezone()) // eslint-disable-line react-hooks/set-state-in-effect
     }
   }, [])
   const setGuestTz = (tz: string) => {
@@ -315,7 +315,7 @@ export default function BookingPage({ filterType, rescheduleToken, preselectedSl
     if (!selectedDate || !config) return
     const key = `${selectedDate.getFullYear()}-${selectedDate.getMonth()}-${selectedDate.getDate()}`
     if (monthBusyMap[key]) {
-      setBusySlots(monthBusyMap[key])
+      setBusySlots(monthBusyMap[key]) // eslint-disable-line react-hooks/set-state-in-effect
       return
     }
     async function fetchAvailability() {

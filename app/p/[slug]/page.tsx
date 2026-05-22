@@ -63,17 +63,15 @@ export default function ProposedSlotLandingPage() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
-  // Guest TZ — auto-detected, persisted across pages, overridable in the selector.
-  const [guestTz, setGuestTz] = useState<string>(HOST_TZ_FALLBACK)
-  useEffect(() => {
-    if (typeof window === 'undefined') return
+  // Guest TZ — auto-detected from localStorage on first render (client only).
+  const [guestTz, setGuestTz] = useState<string>(() => {
+    if (typeof window === 'undefined') return HOST_TZ_FALLBACK
     try {
-      const stored = localStorage.getItem(TZ_STORAGE_KEY)
-      setGuestTz(stored || detectTimezone())
+      return localStorage.getItem(TZ_STORAGE_KEY) || detectTimezone()
     } catch {
-      setGuestTz(detectTimezone())
+      return detectTimezone()
     }
-  }, [])
+  })
   function handleTzChange(tz: string) {
     setGuestTz(tz)
     try { localStorage.setItem(TZ_STORAGE_KEY, tz) } catch { /* ignore quota */ }

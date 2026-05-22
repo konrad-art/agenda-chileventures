@@ -1,4 +1,4 @@
-import { Config, EventType, TimeSlot, Booking } from './types'
+import { Config, TimeSlot, Booking } from './types'
 
 export const DAYS_ES = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"]
 export const MONTHS_ES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]

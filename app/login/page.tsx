@@ -1,20 +1,19 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { CVLogoFull } from '@/components/CVLogo'
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const router = useRouter()
 
   // Clear any stale client-side session on mount to prevent loops
   useEffect(() => {
     supabase.auth.signOut()
     const params = new URLSearchParams(window.location.search)
     if (params.get('error') === 'unauthorized') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setError('Este email no tiene permisos de administrador')
     }
   }, [])

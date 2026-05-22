@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { Booking } from '@/lib/types'
-import { DAYS_ES, MONTHS_ES } from '@/lib/helpers'
+import { MONTHS_ES } from '@/lib/helpers'
 
 export default function AdminPage() {
   const [bookings, setBookings] = useState<Booking[]>([])
@@ -47,12 +47,15 @@ export default function AdminPage() {
     const weekEnd = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
     return d >= now && d <= weekEnd
   }).length
+  /* eslint-disable react-hooks/purity */
   const nextBooking = allBookings.length > 0
     ? allBookings.reduce((a, b) => new Date(a.datetime) < new Date(b.datetime) ? a : b)
     : null
+  const nowMs = Date.now()
   const nextIn = nextBooking
-    ? Math.max(0, Math.round((new Date(nextBooking.datetime).getTime() - Date.now()) / (1000 * 60 * 60)))
+    ? Math.max(0, Math.round((new Date(nextBooking.datetime).getTime() - nowMs) / (1000 * 60 * 60)))
     : null
+  /* eslint-enable react-hooks/purity */
 
   const handleCancel = async (id: string) => {
     await supabase.from('bookings').update({ status: 'cancelled', cancelled_at: new Date().toISOString() }).eq('id', id)
@@ -123,7 +126,7 @@ export default function AdminPage() {
         <div className="flex flex-col gap-3 stagger-children">
           {bookings.map(b => {
             const dt = new Date(b.datetime)
-            const et = b.event_types as any
+            const et = b.event_types as { emoji?: string; name?: string } | undefined
             return (
               <div key={b.id} className="card card-glow booking-stripe p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-5 transition-all duration-200 hover:shadow-md">
                 <div className="flex items-center sm:block text-center min-w-[52px] gap-3 sm:gap-0">

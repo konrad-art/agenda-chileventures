@@ -9,7 +9,7 @@ interface Props {
   hostTz: string  // for the small "host time is..." note when guest TZ differs
 }
 
-export default function TimezoneSelector({ value, onChange, hostTz }: Props) {
+export default function TimezoneSelector({ value, onChange }: Props) {
   const [open, setOpen] = useState(false)
   const [showAll, setShowAll] = useState(false)
   const [search, setSearch] = useState('')
