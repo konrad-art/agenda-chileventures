@@ -31,6 +31,9 @@ export interface EventType {
   min_advance_hours?: number | null
   // Controls whether the phone field appears on the booking form.
   phone_mode?: 'off' | 'optional' | 'required'
+  // Google Calendar event templates. NULL = use hardcoded default.
+  calendar_title_template?: string | null
+  calendar_description_template?: string | null
 }
 
 export interface ExtraField {
