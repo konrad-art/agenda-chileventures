@@ -170,6 +170,7 @@ export default function SettingsPage() {
       sort_order: editingType.sort_order ?? eventTypes.length,
       // null = inherit the global config.min_advance_hours default
       min_advance_hours: editingType.min_advance_hours ?? null,
+      phone_mode: editingType.phone_mode || 'off',
     }
 
     if (isNewType) {
@@ -290,6 +291,27 @@ export default function SettingsPage() {
               </select>
               <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
                 Cuánto antes debe agendarse este tipo de cita
+              </span>
+            </div>
+          </div>
+
+          {/* Phone field mode */}
+          <div className="mb-6">
+            <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+              Pedir teléfono
+            </label>
+            <div className="flex items-center gap-3 flex-wrap">
+              <select
+                className="form-input !w-[180px]"
+                value={editingType.phone_mode || 'off'}
+                onChange={e => updateEditingField('phone_mode', e.target.value)}
+              >
+                <option value="off">No pedir</option>
+                <option value="optional">Opcional</option>
+                <option value="required">Obligatorio</option>
+              </select>
+              <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                Muestra un campo de teléfono en el formulario de reserva
               </span>
             </div>
           </div>

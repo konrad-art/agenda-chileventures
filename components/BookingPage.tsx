@@ -116,7 +116,7 @@ export default function BookingPage({ filterType, rescheduleToken, preselectedSl
   const [calMonth, setCalMonth] = useState(new Date())
   const [step, setStep] = useState<'type' | 'date' | 'form' | 'success'>('type')
 
-  const [formData, setFormData] = useState({ name: '', email: '', notes: '' })
+  const [formData, setFormData] = useState({ name: '', email: '', phone: '', notes: '' })
   const [extraData, setExtraData] = useState<Record<string, string>>({})
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
@@ -156,7 +156,7 @@ export default function BookingPage({ filterType, rescheduleToken, preselectedSl
     async function load() {
       const [configRes, typesRes] = await Promise.all([
         supabase.from('config').select('id, name, title, org, timezone, working_days, start_hour, end_hour, buffer_minutes, max_days_ahead, min_advance_hours, day_schedules').single(),
-        supabase.from('event_types').select('id, name, emoji, duration, description, extra_fields, sort_order').order('sort_order'),
+        supabase.from('event_types').select('id, name, emoji, duration, description, extra_fields, sort_order, phone_mode').order('sort_order'),
       ])
       if (configRes.data) setConfig(configRes.data)
       if (typesRes.data) {
@@ -342,6 +342,7 @@ export default function BookingPage({ filterType, rescheduleToken, preselectedSl
 
   const isFormValid = () => {
     if (!formData.name || !formData.email) return false
+    if (selectedType?.phone_mode === 'required' && !formData.phone.trim()) return false
     if (selectedType) {
       for (const f of selectedType.extra_fields) {
         if (f.required && !extraData[f.key]?.trim()) return false
@@ -398,6 +399,7 @@ export default function BookingPage({ filterType, rescheduleToken, preselectedSl
               datetime: dt.toISOString(),
               name: formData.name,
               email: formData.email,
+              ...(formData.phone.trim() ? { phone: formData.phone.trim() } : {}),
               notes: formData.notes,
               extras: extraData,
               user_timezone: guestTz,
@@ -426,7 +428,7 @@ export default function BookingPage({ filterType, rescheduleToken, preselectedSl
   const resetBooking = () => {
     setSelectedDate(null)
     setSelectedSlot(null)
-    setFormData({ name: '', email: '', notes: '' })
+    setFormData({ name: '', email: '', phone: '', notes: '' })
     setExtraData({})
     setError('')
     setBusySlots([])
@@ -850,6 +852,16 @@ export default function BookingPage({ filterType, rescheduleToken, preselectedSl
                       <input className="form-input" type="email" placeholder="tu@email.com" value={formData.email}
                         onChange={e => setFormData({ ...formData, email: e.target.value })} />
                     </div>
+
+                    {selectedType.phone_mode && selectedType.phone_mode !== 'off' && (
+                      <div className="mb-4">
+                        <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+                          Teléfono {selectedType.phone_mode === 'required' && <span style={{ color: 'var(--accent)' }}>*</span>}
+                        </label>
+                        <input className="form-input" type="tel" placeholder="+56 9 1234 5678" value={formData.phone}
+                          onChange={e => setFormData({ ...formData, phone: e.target.value })} />
+                      </div>
+                    )}
 
                     {selectedType.extra_fields.length > 0 && (
                       <>

@@ -29,6 +29,8 @@ export interface EventType {
   // Per-event-type override for the global config.min_advance_hours.
   // null/undefined = inherit the global default.
   min_advance_hours?: number | null
+  // Controls whether the phone field appears on the booking form.
+  phone_mode?: 'off' | 'optional' | 'required'
 }
 
 export interface ExtraField {
@@ -46,6 +48,7 @@ export interface Booking {
   duration: number
   name: string
   email: string
+  phone?: string | null
   notes: string
   extras: Record<string, string>
   status: string
