@@ -10,6 +10,12 @@ export default function AdminPage() {
   const [allBookings, setAllBookings] = useState<{ id: string; datetime: string; status: string }[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<'upcoming' | 'past' | 'cancelled'>('upcoming')
+  // Per-row cancel UX: 2-step confirm + which booking is mid-cancel + error.
+  // The actual cancel now deletes the GCal event and emails the guest, so a
+  // misclick has user-visible consequences — confirm before firing.
+  const [cancelConfirm, setCancelConfirm] = useState<string | null>(null)
+  const [cancellingId, setCancellingId] = useState<string | null>(null)
+  const [cancelError, setCancelError] = useState<string | null>(null)
 
   const loadBookings = async () => {
     const now = new Date().toISOString()
@@ -47,7 +53,6 @@ export default function AdminPage() {
     const weekEnd = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
     return d >= now && d <= weekEnd
   }).length
-  /* eslint-disable react-hooks/purity */
   const nextBooking = allBookings.length > 0
     ? allBookings.reduce((a, b) => new Date(a.datetime) < new Date(b.datetime) ? a : b)
     : null
@@ -55,11 +60,44 @@ export default function AdminPage() {
   const nextIn = nextBooking
     ? Math.max(0, Math.round((new Date(nextBooking.datetime).getTime() - nowMs) / (1000 * 60 * 60)))
     : null
-  /* eslint-enable react-hooks/purity */
 
+  // Cancel via dedicated edge function — it deletes the GCal event
+  // (sendUpdates=all so the guest gets a cancellation notice from Google),
+  // marks the booking cancelled in the DB, and emails the admin.
   const handleCancel = async (id: string) => {
-    await supabase.from('bookings').update({ status: 'cancelled', cancelled_at: new Date().toISOString() }).eq('id', id)
-    loadBookings()
+    setCancellingId(id)
+    setCancelError(null)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) {
+        setCancelError('Sesión expirada, vuelve a iniciar sesión.')
+        setCancellingId(null)
+        return
+      }
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/cancel`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ booking_id: id }),
+        }
+      )
+      const data = await res.json()
+      if (!res.ok && !data?.already) {
+        setCancelError(data?.error || 'No se pudo cancelar.')
+        setCancellingId(null)
+        return
+      }
+      await loadBookings()
+    } catch {
+      setCancelError('Error de conexión.')
+    } finally {
+      setCancellingId(null)
+      setCancelConfirm(null)
+    }
   }
 
   return (
@@ -105,6 +143,13 @@ export default function AdminPage() {
           ))}
         </div>
       </div>
+
+      {cancelError && (
+        <div className="mb-4 px-4 py-3 rounded-[12px] text-sm font-medium animate-scale-in"
+          style={{ background: 'var(--error-light)', color: 'var(--error)', border: '1px solid var(--error-border)' }}>
+          {cancelError}
+        </div>
+      )}
 
       {loading ? (
         <div className="flex flex-col gap-3 stagger-children">
@@ -155,11 +200,27 @@ export default function AdminPage() {
                   </div>
 
                   {filter === 'upcoming' && (
-                    <button onClick={() => handleCancel(b.id)}
-                      className="btn-sm hover:!bg-[var(--error-light)]"
-                      style={{ background: 'var(--error-light)', color: 'var(--error)', borderColor: 'var(--error-border)', fontFamily: 'inherit' }}>
-                      Cancelar
-                    </button>
+                    cancelConfirm === b.id ? (
+                      <div className="flex items-center gap-1.5">
+                        <button onClick={() => handleCancel(b.id)}
+                          disabled={cancellingId === b.id}
+                          className="btn-sm"
+                          style={{ background: 'var(--error)', color: 'white', borderColor: 'var(--error)', fontFamily: 'inherit', opacity: cancellingId === b.id ? 0.6 : 1 }}>
+                          {cancellingId === b.id ? 'Cancelando…' : 'Confirmar cancelación'}
+                        </button>
+                        <button onClick={() => { setCancelConfirm(null); setCancelError(null) }}
+                          disabled={cancellingId === b.id}
+                          className="btn-sm">
+                          No
+                        </button>
+                      </div>
+                    ) : (
+                      <button onClick={() => { setCancelConfirm(b.id); setCancelError(null) }}
+                        className="btn-sm hover:!bg-[var(--error-light)]"
+                        style={{ background: 'var(--error-light)', color: 'var(--error)', borderColor: 'var(--error-border)', fontFamily: 'inherit' }}>
+                        Cancelar
+                      </button>
+                    )
                   )}
                 </div>
               </div>
