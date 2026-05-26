@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { supabase } from '@/lib/supabase'
 import { Config, EventType, ExtraField } from '@/lib/types'
+import { renderTemplate, validateTemplate, TemplateContext } from '@/lib/calendarTemplate'
 import ProposedSlotsModal from '@/components/ProposedSlotsModal'
 
 type EditingEventType = Omit<EventType, 'sort_order'> & { sort_order?: number }
@@ -26,6 +27,247 @@ function generateSlug(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 30) || 'new-type'
 }
 
+const BUILTIN_VARS = ['name', 'email', 'phone', 'notes', 'event_type', 'emoji', 'duration', 'date', 'time', 'reschedule_url']
+const PII_VARS = ['email', 'phone']
+
+const MOCK_CTX: TemplateContext = {
+  name: 'Juan Pérez',
+  email: 'juan@example.com',
+  phone: '+56 9 1234 5678',
+  notes: 'Nota de ejemplo',
+  event_type: '',
+  emoji: '',
+  duration: '',
+  date: '28 de mayo, 2026',
+  time: '10:00',
+  reschedule_url: 'https://agenda.example.com/reschedule/abc123',
+  extras: {},
+}
+
+function TemplateEditor({
+  editingType,
+  updateEditingField,
+  titleTemplateRef,
+  descTemplateRef,
+  activeTemplateField,
+  setActiveTemplateField,
+}: {
+  editingType: EditingEventType
+  updateEditingField: (key: keyof EditingEventType, value: unknown) => void
+  titleTemplateRef: React.RefObject<HTMLTextAreaElement | null>
+  descTemplateRef: React.RefObject<HTMLTextAreaElement | null>
+  activeTemplateField: 'title' | 'desc'
+  setActiveTemplateField: (v: 'title' | 'desc') => void
+}) {
+  const [showPreview, setShowPreview] = useState(false)
+
+  const extrasVars = useMemo(() =>
+    editingType.extra_fields.filter(f => f.key).map(f => `extras.${f.key}`),
+    [editingType.extra_fields]
+  )
+  const allVars = useMemo(() => [...BUILTIN_VARS, ...extrasVars], [extrasVars])
+
+  const titleTemplate = editingType.calendar_title_template || ''
+  const descTemplate = editingType.calendar_description_template || ''
+  const hasTemplates = !!(titleTemplate || descTemplate)
+
+  const titleValidation = useMemo(() =>
+    titleTemplate ? validateTemplate(titleTemplate, allVars) : { valid: true, errors: [] },
+    [titleTemplate, allVars]
+  )
+  const descValidation = useMemo(() =>
+    descTemplate ? validateTemplate(descTemplate, allVars) : { valid: true, errors: [] },
+    [descTemplate, allVars]
+  )
+
+  const titleHasPII = PII_VARS.some(v => titleTemplate.includes(`{${v}}`))
+
+  const mockCtx: TemplateContext = useMemo(() => ({
+    ...MOCK_CTX,
+    event_type: editingType.name || 'Reunión',
+    emoji: editingType.emoji || '📅',
+    duration: String(editingType.duration || 30),
+    extras: Object.fromEntries(editingType.extra_fields.filter(f => f.key).map(f => [f.key, f.placeholder || `Ejemplo ${f.label}`])),
+  }), [editingType.name, editingType.emoji, editingType.duration, editingType.extra_fields])
+
+  const previewTitle = useMemo(() => {
+    if (!titleTemplate) {
+      const startup = mockCtx.extras?.startup ? ` — ${mockCtx.extras.startup}` : ''
+      return `${mockCtx.emoji} ${mockCtx.event_type}: ${mockCtx.name}${startup}`
+    }
+    return renderTemplate(titleTemplate, mockCtx)
+  }, [titleTemplate, mockCtx])
+
+  const previewDesc = useMemo(() => {
+    if (!descTemplate) {
+      const lines = [`Reunión con: ${mockCtx.name}`]
+      if (mockCtx.extras?.startup) lines.push(`Startup: ${mockCtx.extras.startup}`)
+      lines.push('', '---', `Reagendar: ${mockCtx.reschedule_url}`)
+      return lines.join('\n')
+    }
+    return renderTemplate(descTemplate, mockCtx)
+  }, [descTemplate, mockCtx])
+
+  const insertVar = (varName: string) => {
+    const ref = activeTemplateField === 'title' ? titleTemplateRef.current : descTemplateRef.current
+    const field = activeTemplateField === 'title' ? 'calendar_title_template' : 'calendar_description_template'
+    const current = activeTemplateField === 'title' ? titleTemplate : descTemplate
+
+    if (ref) {
+      const start = ref.selectionStart ?? current.length
+      const end = ref.selectionEnd ?? current.length
+      const inserted = `{${varName}}`
+      const newValue = current.slice(0, start) + inserted + current.slice(end)
+      updateEditingField(field, newValue)
+      requestAnimationFrame(() => {
+        ref.focus()
+        const pos = start + inserted.length
+        ref.setSelectionRange(pos, pos)
+      })
+    } else {
+      updateEditingField(field, current + `{${varName}}`)
+    }
+  }
+
+  const resetDefaults = () => {
+    updateEditingField('calendar_title_template', null)
+    updateEditingField('calendar_description_template', null)
+  }
+
+  const descLength = descTemplate.length
+
+  return (
+    <div className="mb-6">
+      <div className="flex items-center justify-between mb-3">
+        <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
+          Plantilla de Google Calendar
+        </label>
+        {hasTemplates && (
+          <button onClick={resetDefaults}
+            className="px-3 py-1.5 rounded-[8px] text-xs font-semibold cursor-pointer border-2 transition-all bg-transparent"
+            style={{ borderColor: 'var(--border)', color: 'var(--text-tertiary)', fontFamily: 'inherit' }}>
+            Restaurar default
+          </button>
+        )}
+      </div>
+
+      <div className="text-xs mb-4" style={{ color: 'var(--text-tertiary)' }}>
+        Personaliza cómo se ve el evento en Google Calendar. Deja vacío para usar el formato default.
+        Usa <code style={{ background: 'var(--surface-alt)', padding: '1px 4px', borderRadius: '4px' }}>{'{variable}'}</code> para insertar datos
+        y <code style={{ background: 'var(--surface-alt)', padding: '1px 4px', borderRadius: '4px' }}>{'{#if variable}...{/if}'}</code> para contenido condicional.
+      </div>
+
+      {/* Title template */}
+      <div className="mb-4">
+        <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Título del evento</label>
+        <textarea
+          ref={titleTemplateRef}
+          className="form-input !min-h-[44px] !resize-y font-mono text-sm"
+          rows={1}
+          value={titleTemplate}
+          onFocus={() => setActiveTemplateField('title')}
+          onChange={e => updateEditingField('calendar_title_template', e.target.value)}
+          placeholder={`${editingType.emoji || '📅'} ${editingType.name || 'Tipo'}: {name}{#if extras.startup} — {extras.startup}{/if}`}
+        />
+        {!titleValidation.valid && (
+          <div className="text-xs mt-1 flex items-center gap-1" style={{ color: 'var(--error)' }}>
+            {titleValidation.errors.map((e, i) => <span key={i}>{e}</span>)}
+          </div>
+        )}
+        {titleHasPII && (
+          <div className="text-xs mt-1 flex items-center gap-1.5 px-3 py-2 rounded-[8px]" style={{ background: '#FEF3C7', color: '#92400E' }}>
+            <span>&#9888;</span> El email o teléfono aparecerá en el título visible del calendario
+          </div>
+        )}
+      </div>
+
+      {/* Description template */}
+      <div className="mb-4">
+        <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Descripción</label>
+        <textarea
+          ref={descTemplateRef}
+          className="form-input !min-h-[120px] !resize-y font-mono text-sm"
+          rows={5}
+          value={descTemplate}
+          onFocus={() => setActiveTemplateField('desc')}
+          onChange={e => updateEditingField('calendar_description_template', e.target.value)}
+          placeholder={`Reunión con: {name}\n{#if extras.startup}Startup: {extras.startup}\n{/if}{#if phone}Teléfono: {phone}\n{/if}\n---\nReagendar: {reschedule_url}`}
+        />
+        <div className="flex items-center justify-between mt-1">
+          {!descValidation.valid ? (
+            <div className="text-xs flex items-center gap-1" style={{ color: 'var(--error)' }}>
+              {descValidation.errors.map((e, i) => <span key={i}>{e}</span>)}
+            </div>
+          ) : <div />}
+          {descLength > 0 && (
+            <span className="text-xs" style={{ color: descLength > 3500 ? 'var(--error)' : 'var(--text-tertiary)' }}>
+              {descLength}/4000
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Variable chips */}
+      <div className="mb-4 p-3 rounded-[12px] border" style={{ borderColor: 'var(--border)', background: 'var(--surface-alt)' }}>
+        <div className="text-xs font-medium mb-2" style={{ color: 'var(--text-tertiary)' }}>
+          Click para insertar en {activeTemplateField === 'title' ? 'título' : 'descripción'}:
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {allVars.map(v => (
+            <button key={v} onClick={() => insertVar(v)}
+              className="px-2.5 py-1 rounded-[6px] text-xs font-mono cursor-pointer border transition-all hover:border-[var(--accent)] hover:text-[var(--accent)]"
+              style={{ background: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--text-secondary)', fontFamily: 'inherit' }}>
+              {`{${v}}`}
+            </button>
+          ))}
+          <button onClick={() => {
+            const ref = activeTemplateField === 'title' ? titleTemplateRef.current : descTemplateRef.current
+            const field = activeTemplateField === 'title' ? 'calendar_title_template' : 'calendar_description_template'
+            const current = activeTemplateField === 'title' ? titleTemplate : descTemplate
+            const block = '{#if }{/if}'
+            if (ref) {
+              const start = ref.selectionStart ?? current.length
+              const newValue = current.slice(0, start) + block + current.slice(ref.selectionEnd ?? current.length)
+              updateEditingField(field, newValue)
+              requestAnimationFrame(() => {
+                ref.focus()
+                ref.setSelectionRange(start + 5, start + 5)
+              })
+            } else {
+              updateEditingField(field, current + block)
+            }
+          }}
+            className="px-2.5 py-1 rounded-[6px] text-xs font-mono cursor-pointer border transition-all hover:border-[var(--accent)] hover:text-[var(--accent)]"
+            style={{ background: 'var(--surface)', borderColor: 'var(--accent-light, var(--border))', color: 'var(--accent)', fontFamily: 'inherit' }}>
+            {'{#if ...}{/if}'}
+          </button>
+        </div>
+      </div>
+
+      {/* Preview toggle */}
+      <button onClick={() => setShowPreview(!showPreview)}
+        className="text-xs font-semibold cursor-pointer bg-transparent border-none mb-3 flex items-center gap-1.5"
+        style={{ color: 'var(--accent)', fontFamily: 'inherit' }}>
+        <span style={{ display: 'inline-block', transform: showPreview ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>&#9654;</span>
+        Vista previa con datos de ejemplo
+      </button>
+
+      {showPreview && (
+        <div className="rounded-[12px] border p-4" style={{ borderColor: 'var(--border)', background: 'var(--surface-alt)' }}>
+          <div className="mb-3">
+            <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-tertiary)' }}>Título:</span>
+            <div className="text-sm font-medium mt-1">{previewTitle}</div>
+          </div>
+          <div className="border-t pt-3" style={{ borderColor: 'var(--border)' }}>
+            <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-tertiary)' }}>Descripción:</span>
+            <pre className="text-sm mt-1 whitespace-pre-wrap font-sans" style={{ color: 'var(--text-primary)' }}>{previewDesc}</pre>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function SettingsPage() {
   const [config, setConfig] = useState<Config | null>(null)
   const [eventTypes, setEventTypes] = useState<EventType[]>([])
@@ -38,6 +280,11 @@ export default function SettingsPage() {
   const [isNewType, setIsNewType] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
   const [typeSaving, setTypeSaving] = useState(false)
+
+  // Template editor refs
+  const titleTemplateRef = useRef<HTMLTextAreaElement>(null)
+  const descTemplateRef = useRef<HTMLTextAreaElement>(null)
+  const [activeTemplateField, setActiveTemplateField] = useState<'title' | 'desc'>('title')
 
   // Which event type is currently the target of the "Link Email" modal (null = closed)
   const [linkEmailFor, setLinkEmailFor] = useState<EventType | null>(null)
@@ -171,6 +418,8 @@ export default function SettingsPage() {
       // null = inherit the global config.min_advance_hours default
       min_advance_hours: editingType.min_advance_hours ?? null,
       phone_mode: editingType.phone_mode || 'off',
+      calendar_title_template: editingType.calendar_title_template || null,
+      calendar_description_template: editingType.calendar_description_template || null,
     }
 
     if (isNewType) {
@@ -315,6 +564,16 @@ export default function SettingsPage() {
               </span>
             </div>
           </div>
+
+          {/* Calendar Template Editor */}
+          <TemplateEditor
+            editingType={editingType}
+            updateEditingField={updateEditingField}
+            titleTemplateRef={titleTemplateRef}
+            descTemplateRef={descTemplateRef}
+            activeTemplateField={activeTemplateField}
+            setActiveTemplateField={setActiveTemplateField}
+          />
 
           {/* Active toggle */}
           <div className="flex items-center gap-3 mb-8 px-4 py-3 rounded-[12px]" style={{ background: 'var(--surface-alt)' }}>
