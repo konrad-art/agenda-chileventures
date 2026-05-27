@@ -658,9 +658,9 @@ export default function SettingsPage() {
 
   // --- Main Settings View ---
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 items-start">
       {/* Profile */}
-      <div className="card p-5 sm:p-7">
+      <div className="card p-5 sm:p-7 md:order-2">
         <h2 className="text-lg font-semibold mb-5 flex items-center gap-2">&#128100; Perfil</h2>
         <div className="mb-4">
           <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-secondary)' }}>Nombre</label>
@@ -677,7 +677,7 @@ export default function SettingsPage() {
       </div>
 
       {/* Schedule & Working Days — unified per-day view */}
-      <div className="card p-5 sm:p-7 md:col-span-2">
+      <div className="card p-5 sm:p-7 md:order-3">
         <h2 className="text-lg font-semibold mb-5 flex items-center gap-2">&#9200; Horario semanal</h2>
         <div className="flex flex-col gap-2">
           {['1', '2', '3', '4', '5', '6', '0'].map(dayKey => {
@@ -760,7 +760,7 @@ export default function SettingsPage() {
       </div>
 
       {/* Event Types CRUD */}
-      <div className="card p-5 sm:p-7 md:col-span-2">
+      <div className="card p-5 sm:p-7 md:col-span-2 md:order-1">
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-lg font-semibold flex items-center gap-2">&#128203; Tipos de reunión</h2>
           <button onClick={startCreating} className="btn-primary text-sm !py-2.5 !px-5">
@@ -852,7 +852,7 @@ export default function SettingsPage() {
       </div>
 
       {/* Google Calendar */}
-      <div className="card p-5 sm:p-7 md:col-span-2">
+      <div className="card p-5 sm:p-7 md:col-span-2 md:order-4">
         <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">&#128197; Google Calendar</h2>
         {gcalConnected ? (
           <div className="flex items-center gap-3 flex-wrap">
