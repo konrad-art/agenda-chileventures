@@ -109,6 +109,7 @@ export default function BookingPage({ filterType, rescheduleToken, preselectedSl
   const [config, setConfig] = useState<Config | null>(null)
   const [eventTypes, setEventTypes] = useState<EventType[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadTimeout, setLoadTimeout] = useState(false)
 
   const [selectedType, setSelectedType] = useState<EventType | null>(null)
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
@@ -154,56 +155,55 @@ export default function BookingPage({ filterType, rescheduleToken, preselectedSl
   // Load data from Supabase
   useEffect(() => {
     async function load() {
-      const [configRes, typesRes] = await Promise.all([
-        supabase.from('config').select('id, name, title, org, timezone, working_days, start_hour, end_hour, buffer_minutes, max_days_ahead, min_advance_hours, day_schedules').single(),
-        supabase.from('event_types').select('id, name, emoji, duration, description, extra_fields, sort_order, phone_mode').order('sort_order'),
-      ])
-      if (configRes.data) setConfig(configRes.data)
-      if (typesRes.data) {
-        setEventTypes(typesRes.data)
-        // Preselected (proposed-link) wins over filterType: jump straight to the form,
-        // type+date+slot already known.
-        if (preselectedSlot) {
-          const match = typesRes.data.find((t: EventType) => t.id === preselectedSlot.eventTypeId)
-          const hostTzVal = configRes.data?.timezone || HOST_TZ_FALLBACK
-          if (match) {
-            // Convert the UTC instant back to host-TZ wall-clock parts so it
-            // lines up with how slots are represented everywhere else in this
-            // component (TimeSlot { hour, minute } is host-TZ wall time).
-            const d = new Date(preselectedSlot.datetime)
-            const parts: Record<string, string> = {}
-            const dtf = new Intl.DateTimeFormat('en-US', {
-              timeZone: hostTzVal, hourCycle: 'h23',
-              year: 'numeric', month: '2-digit', day: '2-digit',
-              hour: '2-digit', minute: '2-digit',
-            })
-            for (const p of dtf.formatToParts(d)) parts[p.type] = p.value
-            const wallH = parts.hour === '24' ? 0 : Number(parts.hour)
-            const wallMin = Number(parts.minute)
-            setSelectedType(match)
-            setSelectedDate(new Date(Number(parts.year), Number(parts.month) - 1, Number(parts.day)))
-            setSelectedSlot({
-              hour: wallH,
-              minute: wallMin,
-              label: `${String(wallH).padStart(2, '0')}:${String(wallMin).padStart(2, '0')}`,
-            })
-            setStep('form')
-            // Prefill the form with whatever hints the host included in the proposal.
-            setFormData((prev) => ({
-              ...prev,
-              name: preselectedSlot.guestNameHint || prev.name,
-              email: preselectedSlot.guestEmailHint || prev.email,
-            }))
-          }
-        } else if (filterType) {
-          const match = typesRes.data.find((t: EventType) => t.id === filterType)
-          if (match) {
-            setSelectedType(match)
-            setStep('date')
+      try {
+        const [configRes, typesRes] = await Promise.all([
+          supabase.from('config').select('id, name, title, org, timezone, working_days, start_hour, end_hour, buffer_minutes, max_days_ahead, min_advance_hours, day_schedules').single(),
+          supabase.from('event_types').select('id, name, emoji, duration, description, extra_fields, sort_order, phone_mode').order('sort_order'),
+        ])
+        if (configRes.data) setConfig(configRes.data)
+        if (typesRes.data) {
+          setEventTypes(typesRes.data)
+          if (preselectedSlot) {
+            const match = typesRes.data.find((t: EventType) => t.id === preselectedSlot.eventTypeId)
+            const hostTzVal = configRes.data?.timezone || HOST_TZ_FALLBACK
+            if (match) {
+              const d = new Date(preselectedSlot.datetime)
+              const parts: Record<string, string> = {}
+              const dtf = new Intl.DateTimeFormat('en-US', {
+                timeZone: hostTzVal, hourCycle: 'h23',
+                year: 'numeric', month: '2-digit', day: '2-digit',
+                hour: '2-digit', minute: '2-digit',
+              })
+              for (const p of dtf.formatToParts(d)) parts[p.type] = p.value
+              const wallH = parts.hour === '24' ? 0 : Number(parts.hour)
+              const wallMin = Number(parts.minute)
+              setSelectedType(match)
+              setSelectedDate(new Date(Number(parts.year), Number(parts.month) - 1, Number(parts.day)))
+              setSelectedSlot({
+                hour: wallH,
+                minute: wallMin,
+                label: `${String(wallH).padStart(2, '0')}:${String(wallMin).padStart(2, '0')}`,
+              })
+              setStep('form')
+              setFormData((prev) => ({
+                ...prev,
+                name: preselectedSlot.guestNameHint || prev.name,
+                email: preselectedSlot.guestEmailHint || prev.email,
+              }))
+            }
+          } else if (filterType) {
+            const match = typesRes.data.find((t: EventType) => t.id === filterType)
+            if (match) {
+              setSelectedType(match)
+              setStep('date')
+            }
           }
         }
+      } catch (err) {
+        console.error('[BookingPage] Failed to load data:', err)
+      } finally {
+        setLoading(false)
       }
-      setLoading(false)
     }
     load()
   }, [filterType, preselectedSlot])
@@ -468,7 +468,36 @@ export default function BookingPage({ filterType, rescheduleToken, preselectedSl
     )
   }
 
+  // Safety net: if loading takes >12s, show a retry prompt instead of eternal skeleton.
+  useEffect(() => {
+    if (!loading) return
+    const t = setTimeout(() => setLoadTimeout(true), 12000)
+    return () => clearTimeout(t)
+  }, [loading])
+
   if (loading || !config) {
+    if (loadTimeout) {
+      return (
+        <div className="min-h-screen mesh-bg flex items-center justify-center">
+          <div className="text-center max-w-md px-6">
+            <div className="text-4xl mb-4">⏳</div>
+            <h2 className="text-xl font-semibold mb-2" style={{ color: 'var(--text)' }}>
+              La página tardó en cargar
+            </h2>
+            <p className="text-sm mb-6" style={{ color: 'var(--text-secondary)' }}>
+              Puede ser un problema temporal de conexión. Intenta recargar.
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-5 py-2.5 rounded-xl text-sm font-medium cursor-pointer border-none"
+              style={{ background: 'var(--accent)', color: '#fff' }}
+            >
+              Recargar página
+            </button>
+          </div>
+        </div>
+      )
+    }
     return (
       <div className="min-h-screen mesh-bg">
         {/* Skeleton Nav */}
