@@ -321,6 +321,23 @@ export default function SettingsPage() {
     setLoading(false)
   }
 
+  // Kicks off the Google OAuth flow. Used to connect the first time AND to
+  // reconnect for a scope upgrade (the edge function forces prompt=consent, so
+  // reconnecting re-asks consent and stores a token with the current scopes,
+  // e.g. contacts). Same call in both cases.
+  const connectGoogle = async () => {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.access_token) return
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/google-auth?action=connect`,
+      { method: 'GET', headers: { Authorization: `Bearer ${session.access_token}` } }
+    )
+    if (res.ok) {
+      const data = await res.json()
+      if (data.url) window.location.href = data.url
+    }
+  }
+
   const saveConfig = async (updates: Partial<Config>) => {
     if (!config) return
     const updated = { ...config, ...updates }
@@ -860,25 +877,22 @@ export default function SettingsPage() {
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
               Conectado
             </div>
-            <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Tu calendario se usa para verificar disponibilidad y crear eventos</span>
+            <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Tu calendario y contactos se usan para verificar disponibilidad, crear eventos y sincronizar contactos</span>
+            <button
+              type="button"
+              onClick={connectGoogle}
+              className="text-sm font-semibold underline underline-offset-2"
+              style={{ color: 'var(--text-secondary)' }}
+              title="Vuelve a autorizar Google para actualizar los permisos (p. ej. contactos)">
+              Reconectar
+            </button>
           </div>
         ) : (
           <div>
             <p className="text-sm mb-3" style={{ color: 'var(--text-secondary)' }}>Conecta tu Google Calendar para verificar disponibilidad real y crear eventos automáticamente.</p>
             <button
               type="button"
-              onClick={async () => {
-                const { data: { session } } = await supabase.auth.getSession()
-                if (!session?.access_token) return
-                const res = await fetch(
-                  `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/google-auth?action=connect`,
-                  { method: 'GET', headers: { Authorization: `Bearer ${session.access_token}` } }
-                )
-                if (res.ok) {
-                  const data = await res.json()
-                  if (data.url) window.location.href = data.url
-                }
-              }}
+              onClick={connectGoogle}
               className="btn-primary inline-block">
               Conectar Google Calendar
             </button>
