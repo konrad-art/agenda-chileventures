@@ -340,6 +340,13 @@ export default function BookingPage({ filterType, rescheduleToken, preselectedSl
     fetchAvailability()
   }, [selectedDate, config, selectedType?.id, monthBusyMap])
 
+  // Safety net: if loading takes >12s, show a retry prompt instead of eternal skeleton.
+  useEffect(() => {
+    if (!loading) return
+    const t = setTimeout(() => setLoadTimeout(true), 12000)
+    return () => clearTimeout(t)
+  }, [loading])
+
   const isFormValid = () => {
     if (!formData.name || !formData.email) return false
     if (selectedType?.phone_mode === 'required' && !formData.phone.trim()) return false
@@ -467,13 +474,6 @@ export default function BookingPage({ filterType, rescheduleToken, preselectedSl
       </div>
     )
   }
-
-  // Safety net: if loading takes >12s, show a retry prompt instead of eternal skeleton.
-  useEffect(() => {
-    if (!loading) return
-    const t = setTimeout(() => setLoadTimeout(true), 12000)
-    return () => clearTimeout(t)
-  }, [loading])
 
   if (loading || !config) {
     if (loadTimeout) {
